@@ -8,8 +8,8 @@ const router = express.Router();
 router.post("/upload", upload.single("cv"), uploadCV);
 //users can get and view their cvs
 router.get("/my-cvs", getMyCVs);
-//Extract CV text and save it
-router.get("/:cvId/analyze", analyzeCV);
+//Extract CV text and send to AI service
+router.post("/:cvId/analyze", analyzeCV);
 //Retrieve the saved analysis
 router.get("/:cvId/analysis", getAnalysis);
 //update cv

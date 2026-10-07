@@ -1,9 +1,32 @@
 import CV from "../models/cv.model.js";
-import { extractTextFromCV, saveExtractedText, getCVAnalysis } from "../services/cv.analysis.service.js";
+import validateCVAnalysisInput from "../validators/cv.analysis.validator.js";
+import { extractTextFromCV, saveExtractedText, sanitizeCVText, getCVAnalysis } from "../services/cv.analysis.service.js";
 
 const analyzeCV = async (req, res, next) => {
   try {
     const { cvId } = req.params;
+
+    const {
+      targetJobTitle,
+      industryFocus,
+      careerStage,
+      primaryGoal,
+    } = req.body;
+
+    const errors = validateCVAnalysisInput({
+      targetJobTitle,
+      industryFocus,
+      careerStage,
+      primaryGoal,
+    });
+
+    if (errors.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid analysis input.",
+        errors,
+      });
+    }
 
     const cv = await CV.findByPk(cvId);
 
@@ -19,15 +42,30 @@ const analyzeCV = async (req, res, next) => {
       cv.fileType
     );
 
-    const analysis = await saveExtractedText(
-      cv.id,
-      extractedText
-    );
+    const sanitizedText = sanitizeCVText(extractedText);
 
-    return res.status(200).json({
+    const analysis = await saveExtractedText({
+          cvId: cv.id,
+          targetJobTitle,
+          industryFocus,
+          careerStage,
+          primaryGoal,
+          extractedText,
+          sanitizedText,
+      });
+
+    return res.status(201).json({
       success: true,
-      message: "CV text extracted successfully.",
-      data: analysis,
+      message: "CV processed successfully.",
+      data: {
+        analysisId: analysis.id,
+        targetJobTitle,
+        industryFocus,
+        careerStage,
+        primaryGoal,
+        extractedText,
+        sanitizedText,
+      },
     });
   } catch (error) {
     next(error);

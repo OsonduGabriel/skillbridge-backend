@@ -16,12 +16,13 @@ const fileFilter = (req, file, cb) => {
     "application/pdf",
     "application/msword",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "text/plain"
   ];
 
   if (allowedTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error("Only PDF, DOC, and DOCX files are allowed."), false);
+    cb(new Error("Only PDF, DOC, DOCX, and TEXT files are allowed."), false);
   }
 };
 
