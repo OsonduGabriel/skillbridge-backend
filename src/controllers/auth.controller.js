@@ -1,4 +1,4 @@
-import {registerUser,loginUser,} from "../services/auth.service.js";
+import {registerUser,loginUser,forgotPasswordService,verifyResetCodeService,resetPasswordService,} from "../services/auth.service.js";
 
 export const register = async (req, res, next) => {
   try {
@@ -47,6 +47,83 @@ export const login = async (req, res, next) => {
       success: true,
       message: "Login successful",
       data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const forgotPassword = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+    }
+
+    const result = await forgotPasswordService(email);
+
+    return res.status(200).json({
+      success: true,
+      message: result.message,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const verifyResetCode = async (req, res, next) => {
+  try {
+    const { email, code } = req.body;
+
+    if (!email || !code) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and reset code are required",
+      });
+    }
+
+    const result = await verifyResetCodeService(email, code);
+
+    return res.status(200).json({
+      success: true,
+      message: result.message,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const resetPassword = async (req, res, next) => {
+  try {
+    const { email, code, newPassword } = req.body;
+
+    if (!email || !code || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Email, reset code and new password are required",
+      });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must be at least 8 characters long",
+      });
+    }
+
+    const result = await resetPasswordService({
+      email,
+      code,
+      newPassword,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: result.message,
     });
   } catch (error) {
     next(error);
