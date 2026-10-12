@@ -1,9 +1,14 @@
 import express from "express";
 import upload from "../middleware/upload.middleware.js";
+import { protect } from "../middleware/auth.middleware.js";
 import { uploadCV, getMyCVs, removeCV, updateCV, downloadCV } from "../controllers/cv.controller.js";
 import { analyzeCV, getAnalysis, getAnalysisHistory } from "../controllers/cv.analysis.controller.js";
 
 const router = express.Router();
+
+// Require authentication for all CV routes
+router.use(protect);
+
 //Upload CV
 router.post("/upload", upload.single("cv"), uploadCV);
 //users can get and view their cvs

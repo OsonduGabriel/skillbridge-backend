@@ -4,10 +4,25 @@ import { processCVAnalysis, getCVAnalysis, getCVAnalysisHistory } from "../servi
 
 
 //*We are not calling AI service yet and we use cvId which will change after getting Taiwo's authentication codes
+
+// Find a CV only if it belongs to the logged-in user.
+// Return null if the CV does not exist or belongs to someone else.
+const findUserCV = async (cvId, userId) => {
+  return CV.findOne({
+    where: {
+      id: cvId,
+      userId,
+    },
+  });
+};
+
+
+
 //Extracts and sanitizes a CV, then saves an analysis record
 const analyzeCV = async (req, res, next) => {
   try {
     const { cvId } = req.params;
+    const userId = req.user.id;
 
     const {targetJobTitle, industryFocus, careerStage,primaryGoal} = req.body;
 //validate the analysis input
@@ -22,7 +37,8 @@ const analyzeCV = async (req, res, next) => {
     }
 
     //find the uploaded cv
-    const cv = await CV.findByPk(cvId);
+    // Verify that this CV belongs to the logged-in user.
+    const cv = await findUserCV(cvId, userId);
 
     if (!cv) {
       return res.status(404).json({
@@ -57,11 +73,22 @@ const analyzeCV = async (req, res, next) => {
   }
 };
 
-//get Analysis for a cv
+//function: get Analysis for a cv
 const getAnalysis = async (req, res, next) => {
   try {
     const { cvId } = req.params;
+    const userId = req.user.id;
 
+    // Check ownership before retrieving the analysis.
+    const cv = await findUserCV(cvId, userId);
+
+    if (!cv) {
+      return res.status(404).json({
+        success: false,
+        message: "CV not found.",
+      });
+    }
+//retrieve user cv
     const analysis = await getCVAnalysis(cvId);
 
     if (!analysis) {
@@ -85,7 +112,18 @@ const getAnalysis = async (req, res, next) => {
 const getAnalysisHistory = async(req, res, next) => {
   try {
     const {cvId} = req.params
+    const userId = req.user.id;
 
+    // Check ownership before retrieving the history.
+    const cv = await findUserCV(cvId, userId);
+
+    if (!cv) {
+      return res.status(404).json({
+        success: false,
+        message: "CV not found.",
+      });
+    }
+//retrieve cv history
     const analyses = await getCVAnalysisHistory(cvId)
     return res.status(200).json({
       success: true,

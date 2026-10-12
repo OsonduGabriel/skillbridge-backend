@@ -116,7 +116,7 @@ const processCVAnalysis = async(cv, targetJobTitle, industryFocus, careerStage, 
     sanitizedText
   })
 
-  return (analysis, sanitizedText)
+  return {analysis, sanitizedText}
 }
 
 export { extractTextFromCV, saveExtractedText, getCVAnalysis, sanitizeCVText, saveAIAnalysisResult, processCVAnalysis, getCVAnalysisHistory };
