@@ -1,24 +1,17 @@
 import CV from "../models/cv.model.js";
 import validateCVAnalysisInput from "../validators/cv.analysis.validator.js";
-import { extractTextFromCV, saveExtractedText, sanitizeCVText, getCVAnalysis } from "../services/cv.analysis.service.js";
+import { processCVAnalysis, getCVAnalysis, getCVAnalysisHistory } from "../services/cv.analysis.service.js";
 
+
+//*We are not calling AI service yet and we use cvId which will change after getting Taiwo's authentication codes
+//Extracts and sanitizes a CV, then saves an analysis record
 const analyzeCV = async (req, res, next) => {
   try {
     const { cvId } = req.params;
 
-    const {
-      targetJobTitle,
-      industryFocus,
-      careerStage,
-      primaryGoal,
-    } = req.body;
-
-    const errors = validateCVAnalysisInput({
-      targetJobTitle,
-      industryFocus,
-      careerStage,
-      primaryGoal,
-    });
+    const {targetJobTitle, industryFocus, careerStage,primaryGoal} = req.body;
+//validate the analysis input
+    const errors = validateCVAnalysisInput({targetJobTitle,industryFocus,careerStage,primaryGoal});
 
     if (errors.length > 0) {
       return res.status(400).json({
@@ -28,6 +21,7 @@ const analyzeCV = async (req, res, next) => {
       });
     }
 
+    //find the uploaded cv
     const cv = await CV.findByPk(cvId);
 
     if (!cv) {
@@ -37,21 +31,13 @@ const analyzeCV = async (req, res, next) => {
       });
     }
 
-    const extractedText = await extractTextFromCV(
-      cv.filePath,
-      cv.fileType
-    );
-
-    const sanitizedText = sanitizeCVText(extractedText);
-
-    const analysis = await saveExtractedText({
-          cvId: cv.id,
+    // Extract CV text, sanitize PII, and save the analysis
+    const {analysis, sanitizedText} = await processCVAnalysis({
+          cv,
           targetJobTitle,
           industryFocus,
           careerStage,
-          primaryGoal,
-          extractedText,
-          sanitizedText,
+          primaryGoal
       });
 
     return res.status(201).json({
@@ -63,7 +49,6 @@ const analyzeCV = async (req, res, next) => {
         industryFocus,
         careerStage,
         primaryGoal,
-        extractedText,
         sanitizedText,
       },
     });
@@ -72,6 +57,7 @@ const analyzeCV = async (req, res, next) => {
   }
 };
 
+//get Analysis for a cv
 const getAnalysis = async (req, res, next) => {
   try {
     const { cvId } = req.params;
@@ -95,4 +81,19 @@ const getAnalysis = async (req, res, next) => {
   }
 };
 
-export { analyzeCV,  getAnalysis };
+//get history of all analysis done for a cv
+const getAnalysisHistory = async(req, res, next) => {
+  try {
+    const {cvId} = req.params
+
+    const analyses = await getCVAnalysisHistory(cvId)
+    return res.status(200).json({
+      success: true,
+      message: "CV analysis history retrieved successfully.",
+      data: analyses
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+export { analyzeCV,  getAnalysis, getAnalysisHistory };

@@ -1,8 +1,8 @@
-const analyzeCVWithAI = async (cvId, extractedText) => {
+const analyzeCVWithAI = async (analysisData) => {
   // AI team will provide the integration logic here.
-
+  console.log("Sending cv text to ai service", analysisData)
   return {
-    cvId,
+    cvId: analysisData.cvId,
     analysis: null,
   };
 };
