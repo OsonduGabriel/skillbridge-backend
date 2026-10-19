@@ -1,0 +1,102 @@
+{
+  "info": {
+    "name": "SkillBridge Opportunities",
+    "description": "Opportunity CRUD, filtering, and admin aggregation. Set tokens locally in collection variables.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000/api/v1" },
+    { "key": "adminToken", "value": "" },
+    { "key": "studentToken", "value": "" },
+    { "key": "opportunityId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "List and filter opportunities",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{studentToken}}" }],
+        "url": "{{baseUrl}}/opportunities?page=1&limit=10&type=internship&skill=node.js"
+      }
+    },
+    {
+      "name": "Read opportunity",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{studentToken}}" }],
+        "url": "{{baseUrl}}/opportunities/{{opportunityId}}"
+      }
+    },
+    {
+      "name": "Create opportunity",
+      "event": [{
+        "listen": "test",
+        "script": {
+          "type": "text/javascript",
+          "exec": [
+            "if (pm.response.code === 201) {",
+            "  const body = pm.response.json();",
+            "  pm.collectionVariables.set('opportunityId', body.data.id);",
+            "}"
+          ]
+        }
+      }],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Software Engineering Intern\",\n  \"company\": \"Example Company\",\n  \"description\": \"Build services with the product team.\",\n  \"type\": \"internship\",\n  \"location\": \"Lagos, Nigeria\",\n  \"workMode\": \"hybrid\",\n  \"applicationUrl\": \"https://example.com/careers/intern\",\n  \"requiredSkills\": [\"JavaScript\", \"Node.js\"]\n}"
+        },
+        "url": "{{baseUrl}}/opportunities"
+      }
+    },
+    {
+      "name": "Update opportunity",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": { "mode": "raw", "raw": "{\n  \"status\": \"closed\"\n}" },
+        "url": "{{baseUrl}}/opportunities/{{opportunityId}}"
+      }
+    },
+    {
+      "name": "Aggregate opportunities",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+        "url": "{{baseUrl}}/opportunities/aggregate"
+      }
+    },
+    {
+      "name": "Delete opportunity",
+      "request": {
+        "method": "DELETE",
+        "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+        "url": "{{baseUrl}}/opportunities/{{opportunityId}}"
+      }
+    },
+    {
+      "name": "Validation failure example",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{studentToken}}" }],
+        "url": "{{baseUrl}}/opportunities?page=0"
+      }
+    },
+    {
+      "name": "Role failure example",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{studentToken}}" }],
+        "url": "{{baseUrl}}/opportunities/aggregate"
+      }
+    }
+  ]
+}
