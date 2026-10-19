@@ -54,3 +54,16 @@ request and response examples and
 [docs/opportunity.postman_collection.json](docs/opportunity.postman_collection.json)
 for a Postman collection. Local startup also requires a configured PostgreSQL
 database and `JWT_SECRET`.
+
+## Career Roadmap API
+
+Roadmap endpoints are mounted at `/api/v1/roadmaps` and require a bearer token.
+Roadmaps and their tasks are scoped to the authenticated owner. The roadmap
+generation route currently returns `503` after checking ownership of the
+requested skill gap because the team has not selected an AI provider.
+
+Tasks use phases `30`, `60`, or `90`, and task status is owned by the roadmap
+service. The Progress module can import `setTaskStatus(userId, taskId, status)`
+from `src/services/roadmap.service.js`. See
+[docs/roadmap-api-examples.md](docs/roadmap-api-examples.md) for request and
+response examples.
