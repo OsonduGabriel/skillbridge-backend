@@ -2,55 +2,63 @@
 import jwt from "jsonwebtoken";
 import User from "../models/user.model.js";
 
+// Authenticate the user using the JWT issued during login.
 export const protect = async (req, res, next) => {
   try {
-    let token;
+    const authHeader = req.headers.authorization;
 
-    // Get token from Authorization header
-    if (
-      req.headers.authorization &&
-      req.headers.authorization.startsWith("Bearer ")
-    ) {
-      token = req.headers.authorization.split(" ")[1];
-    }
-
-    // Check if token exists
-    if (!token) {
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return res.status(401).json({
         success: false,
-        message: "Not authorized. No token provided",
+        message: "Authentication required. Please provide a Bearer token.",
       });
     }
 
-    // Verify token
+    const token = authHeader.split(" ")[1];
+
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication token is missing.",
+      });
+    }
+
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Find user from token
-    const user = await User.findByPk(decoded.userId);
+    // auth.service.js signs tokens with { id, role }.
+    if (!decoded.id) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid authentication token payload.",
+      });
+    }
+
+    // Confirm the user still exists in the database.
+    const user = await User.findByPk(decoded.id);
 
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: "User no longer exists",
+        message: "User no longer exists. Please log in again.",
       });
     }
 
-    // Attach user to request
+    // Use the current database record, including its current role.
     req.user = user;
 
     next();
   } catch (error) {
-    if (error.name === "TokenExpiredError") {
+    if (
+      error.name === "TokenExpiredError" ||
+      error.name === "JsonWebTokenError" ||
+      error.name === "NotBeforeError"
+    ) {
       return res.status(401).json({
         success: false,
-        message: "Token has expired. Please log in again",
-      });
-    }
-
-    if (error.name === "JsonWebTokenError") {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid token",
+        message:
+          error.name === "TokenExpiredError"
+            ? "Your token has expired. Please log in again."
+            : "Invalid authentication token.",
       });
     }
 
@@ -58,7 +66,32 @@ export const protect = async (req, res, next) => {
 
     return res.status(500).json({
       success: false,
-      message: "Authentication failed",
+      message: "Authentication failed due to a server error.",
     });
   }
+};
+
+// Keep the existing name used by Skills routes.
+// Both names now use exactly the same authentication logic.
+export const authenticateUser = protect;
+
+// Check whether the authenticated user has the required role.
+export const authorizeRoles = (...allowedRoles) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required.",
+      });
+    }
+
+    if (!allowedRoles.includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: "You do not have permission to perform this action.",
+      });
+    }
+
+    next();
+  };
 };
