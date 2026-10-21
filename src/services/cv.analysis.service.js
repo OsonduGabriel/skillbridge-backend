@@ -6,6 +6,7 @@ import pdfParse from "pdf-parse";
 import mammoth from "mammoth";
 import CVAnalysis from "../models/cv.analysis.model.js";
 import sanitizePII from "../utils/pii.sanitizer.js";
+import { analyzeCVWithAI } from "./ai.service.js";
 
 //function: extract text from cv
 const extractTextFromCV = async (filePath, fileType) => {
@@ -101,11 +102,34 @@ const saveAIAnalysisResult = async (analysisId, analysisResult) => {
 };
 
 //function: process a cv and save extracted text and sanitized extracted ext
-const processCVAnalysis = async(cv, targetJobTitle, industryFocus, careerStage, primaryGoal) => {
+const processCVAnalysis = async ({ cv, targetJobTitle, industryFocus, careerStage, primaryGoal}) => {
+  // The current AI integration supports Skill Gap Analysis only.
+  // Do not return a skill-gap result for a different goal.
+  if (primaryGoal !== "Gap Analysis") {
+    const error = new Error(
+      "AI analysis is currently available for Gap Analysis only.");
+    error.statusCode = 501;
+    throw error;
+  }
 
-  const extractedText = await extractTextFromCV(cv.filePath, cv.fileType)
-  const sanitizedText = await sanitizeCVText(extractedText)
+  // Step 1: Extract text from the uploaded CV.
+  const extractedText = await extractTextFromCV(
+    cv.filePath,
+    cv.fileType
+  );
 
+  // Reject files that contain no extractable text.
+  if (!extractedText || !extractedText.trim()) {
+    const error = new Error(
+      "No readable text was found in the CV.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  // Step 2: Remove confidential information.
+  const sanitizedText = await sanitizeCVText(extractedText);
+
+  // Step 3: Save the CV text and analysis details.
   const analysis = await saveExtractedText({
     cvId: cv.id,
     targetJobTitle,
@@ -113,10 +137,35 @@ const processCVAnalysis = async(cv, targetJobTitle, industryFocus, careerStage, 
     careerStage,
     primaryGoal,
     extractedText,
-    sanitizedText
-  })
+    sanitizedText,
+  });
 
-  return {analysis, sanitizedText}
-}
+  // Step 4: Send the sanitized CV text to the AI service.
+  const aiResponse = await analyzeCVWithAI({
+    cvId: cv.id,
+    sanitizedText,
+    targetJobTitle,
+    industryFocus,
+    careerStage,
+  });
+
+  // Step 5: Save the AI result to the same analysis record.
+  const savedAnalysis = await saveAIAnalysisResult(
+    analysis.id,
+    aiResponse.analysis
+  );
+
+  if (!savedAnalysis) {
+    throw new Error("Could not save the AI analysis result.");
+  }
+
+  // Return the saved record and sanitized text to the controller.
+  return {
+    analysis: savedAnalysis,
+    sanitizedText,
+  };
+};
 
 export { extractTextFromCV, saveExtractedText, getCVAnalysis, sanitizeCVText, saveAIAnalysisResult, processCVAnalysis, getCVAnalysisHistory };
+
+
