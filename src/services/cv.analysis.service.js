@@ -1,8 +1,8 @@
-//*Extract text from CV using cv analysis and save in database 
+//*Extract text from CV using cv analysis and save in database
 
 import fs from "fs/promises";
 import path from "path";
-import pdfParse from "pdf-parse";
+import { PDFParse } from "pdf-parse";
 import mammoth from "mammoth";
 import CVAnalysis from "../models/cv.analysis.model.js";
 import sanitizePII from "../utils/pii.sanitizer.js";
@@ -13,12 +13,18 @@ const extractTextFromCV = async (filePath, fileType) => {
   const extension = path.extname(filePath).toLowerCase();
 
   //cv in pdf format
-  if (fileType === "application/pdf" || extension === ".pdf") {
-    const fileBuffer = await fs.readFile(filePath);
-    const pdfData = await pdfParse(fileBuffer);
+ if (fileType === "application/pdf" || extension === ".pdf") {
+  const fileBuffer = await fs.readFile(filePath);
 
+  const parser = new PDFParse({ data: fileBuffer });
+
+  try {
+    const pdfData = await parser.getText();
     return pdfData.text;
+  } finally {
+    await parser.destroy();
   }
+}
 
     //cv in word docx format
   if (fileType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || extension === ".docx") {
@@ -167,5 +173,3 @@ const processCVAnalysis = async ({ cv, targetJobTitle, industryFocus, careerStag
 };
 
 export { extractTextFromCV, saveExtractedText, getCVAnalysis, sanitizeCVText, saveAIAnalysisResult, processCVAnalysis, getCVAnalysisHistory };
-
-
