@@ -1,11 +1,11 @@
 
 import { UniqueConstraintError, ValidationError } from "sequelize";
 
-// Global error handling middleware
+// Global error handling middleware.
 export const errorHandler = (error, req, res, next) => {
   console.error(error.errors || error);
 
-  // If the response has already started, delegate to Express.
+  // Delegate to Express if the response has already started.
   if (res.headersSent) {
     return next(error);
   }
@@ -13,20 +13,34 @@ export const errorHandler = (error, req, res, next) => {
   let statusCode = error.statusCode || 500;
   let message = error.message || "Internal Server Error";
 
-  // Check duplicate values before general validation errors.
+  // Handle duplicate database values.
   if (error instanceof UniqueConstraintError) {
     statusCode = 409;
     message = "A record with this value already exists.";
-  } else if (error instanceof ValidationError) {
+  }
+  // Handle Sequelize validation errors.
+  else if (error instanceof ValidationError) {
     statusCode = 400;
     message = error.errors
       .map((item) => item.message)
       .join(", ");
   }
 
-  // Hide unexpected internal errors in production.
+  // Ensure the status code is a valid HTTP error status.
+  if (
+    !Number.isInteger(statusCode) ||
+    statusCode < 400 ||
+    statusCode > 599
+  ) {
+    statusCode = 500;
+  }
+
+  // Hide internal server error details in production.
   if (statusCode >= 500) {
-    message = process.env.NODE_ENV === "development" ? error.message || "Internal Server Error"   : "Internal Server Error";
+    message =
+      process.env.NODE_ENV === "development"
+        ? error.message || "Internal Server Error"
+        : "Internal Server Error";
   }
 
   const response = {

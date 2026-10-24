@@ -215,4 +215,3 @@ const processCVAnalysis = async ({
 };
 
 
-export { extractTextFromCV, saveExtractedText, getCVAnalysis, sanitizeCVText, saveAIAnalysisResult, processCVAnalysis, getCVAnalysisHistory };
