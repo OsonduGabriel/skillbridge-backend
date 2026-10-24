@@ -48,26 +48,28 @@ const analyzeCV = async (req, res, next) => {
     }
 
     // Extract CV text, sanitize PII, and save the analysis
-    const {analysis, sanitizedText} = await processCVAnalysis({
-          cv,
-          targetJobTitle,
-          industryFocus,
-          careerStage,
-          primaryGoal
-      });
+    const { analysis, skillGap } = await processCVAnalysis({
+  cv,
+  targetJobTitle,
+  industryFocus,
+  careerStage,
+  primaryGoal,
+});
 
     return res.status(201).json({
-      success: true,
-      message: "CV processed successfully.",
-      data: {
-        analysisId: analysis.id,
-        targetJobTitle,
-        industryFocus,
-        careerStage,
-        primaryGoal,
-        sanitizedText,
-      },
-    });
+    success: true,
+    message: "CV skill-gap analysis completed successfully.",
+    data: {
+    analysisId: analysis.id,
+    skillGapId: skillGap.id,
+    targetJobTitle: analysis.targetJobTitle,
+    industryFocus: analysis.industryFocus,
+    careerStage: analysis.careerStage,
+    primaryGoal: analysis.primaryGoal,
+    analysisResult: analysis.analysisResult,
+    skillGap,
+  },
+});
   } catch (error) {
     next(error);
   }
