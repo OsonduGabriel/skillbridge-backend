@@ -7,6 +7,8 @@ import profileRoutes from "./profile.routes.js";
 import skillRoutes from "./skill.routes.js";
 import recommendationRoutes from "./recommendation.routes.js";
 import progressRoutes from "./progress.routes.js";
+import cvRoutes from "./cv.routes.js";
+import skillgapRoutes from "./skillgap.routes.js";
 
 const router = express.Router();
 
@@ -25,7 +27,13 @@ router.use("/skills", skillRoutes);
 // Learning resources and project recommendations
 router.use("/recommendations", recommendationRoutes);
 
-// User learning progress tracking
+// Learning progress tracking
 router.use("/progress", progressRoutes);
+
+// CV management and analysis
+router.use("/cvs", cvRoutes);
+
+// Skill-gap analysis
+router.use("/skill-gaps", skillgapRoutes);
 
 export default router;
