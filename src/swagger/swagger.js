@@ -3,6 +3,10 @@ import swaggerJsdoc from "swagger-jsdoc";
 import path from "path";
 import { fileURLToPath } from "url";
 
+// Import schema objects
+import userSchema from "./schemas/user.schema.js";
+import authSchema from "./schemas/auth.schema.js";
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -19,12 +23,19 @@ const options = {
 
     servers: [
       {
-        url: "http://localhost:5007",
+        url: "http://localhost:3000",
         description: "Local development server",
       },
     ],
 
     components: {
+      // Combine reusable schemas
+      schemas: {
+        ...userSchema,
+        ...authSchema,
+      },
+
+      // JWT authentication configuration
       securitySchemes: {
         bearerAuth: {
           type: "http",
@@ -84,8 +95,8 @@ const options = {
     ],
   },
 
-  // swagger.js is in src/swagger.
-  // Route files are in src/routes.
+  // Swagger scans route files for endpoint documentation.
+  // Reusable schemas are imported directly above.
   apis: [path.join(__dirname, "../routes/*.js")],
 };
 

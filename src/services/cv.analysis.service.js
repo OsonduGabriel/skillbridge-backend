@@ -1,28 +1,53 @@
-//*Extract text from CV using cv analysis and save in database 
+
+/**
+ * Extract text from CVs, sanitize personal information,
+ * and save CV analysis results in the database.
+ */
 
 import fs from "fs/promises";
 import path from "path";
-import pdfParse from "pdf-parse";
+import { PDFParse } from "pdf-parse";
 import mammoth from "mammoth";
+
 import CVAnalysis from "../models/cv.analysis.model.js";
 import sanitizePII from "../utils/pii.sanitizer.js";
-import {
-  createSkillGap, completeSkillGapAnalysis, failSkillGapAnalysis} from "./skillgap.service.js";
 
-//function: extract text from cv
+import {
+  createSkillGap,
+  completeSkillGapAnalysis,
+  failSkillGapAnalysis,
+} from "./skillgap.service.js";
+
+import { analyzeCVWithAI } from "./ai.service.js";
+
+// Extract text from an uploaded CV.
 const extractTextFromCV = async (filePath, fileType) => {
   const extension = path.extname(filePath).toLowerCase();
 
-  //cv in pdf format
+  // Extract text from PDF files using pdf-parse v2.
   if (fileType === "application/pdf" || extension === ".pdf") {
     const fileBuffer = await fs.readFile(filePath);
-    const pdfData = await pdfParse(fileBuffer);
 
-    return pdfData.text;
+    const parser = new PDFParse({
+      data: fileBuffer,
+    });
+
+    try {
+      const pdfData = await parser.getText();
+
+      return pdfData.text;
+    } finally {
+      // Release resources used by the PDF parser.
+      await parser.destroy();
+    }
   }
 
-    //cv in word docx format
-  if (fileType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || extension === ".docx") {
+  // Extract text from Word DOCX files.
+  if (
+    fileType ===
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+    extension === ".docx"
+  ) {
     const result = await mammoth.extractRawText({
       path: filePath,
     });
@@ -30,30 +55,36 @@ const extractTextFromCV = async (filePath, fileType) => {
     return result.value;
   }
 
-    //cv in word doc format
+  // DOC files are accepted for upload, but extraction is not supported yet.
   if (fileType === "application/msword" || extension === ".doc") {
-    throw new Error("DOC files are currently accepted for upload, but text extraction is not supported yet.");
+    throw new Error(
+      "DOC files are currently accepted for upload, but text extraction is not supported yet."
+    );
   }
 
-    //cv in text format
+  // Extract text from plain text files.
   if (fileType === "text/plain" || extension === ".txt") {
-  const text = await fs.readFile(filePath, "utf-8");
-
-  return text;
-}
+    return await fs.readFile(filePath, "utf-8");
+  }
 
   throw new Error("Unsupported CV file type.");
 };
 
-//function: sanitize cv text - remove user confidential information form cv
+// Remove personally identifiable information from extracted CV text.
 const sanitizeCVText = (extractedText) => {
   return sanitizePII(extractedText);
 };
 
-//function: save extracted text
-const saveExtractedText = async ({cvId, targetJobTitle, industryFocus, careerStage, primaryGoal,
-  extractedText, sanitizedText}) => {
-
+// Save the extracted and sanitized text in the database.
+const saveExtractedText = async ({
+  cvId,
+  targetJobTitle,
+  industryFocus,
+  careerStage,
+  primaryGoal,
+  extractedText,
+  sanitizedText,
+}) => {
   const analysis = await CVAnalysis.create({
     cvId,
     targetJobTitle,
@@ -67,27 +98,27 @@ const saveExtractedText = async ({cvId, targetJobTitle, industryFocus, careerSta
   return analysis;
 };
 
-//function: get cv analysis for a particular cv uploaded by the user
+// Get the latest analysis for a particular CV.
 const getCVAnalysis = async (cvId) => {
   const analysis = await CVAnalysis.findOne({
     where: { cvId },
-    order: [["createdAt", "DESC"]]
+    order: [["createdAt", "DESC"]],
   });
 
   return analysis;
 };
 
-//function: get cv analysis history for a particular cv - to preserve every cv analysis that was done on a particular cv for a user
-const getCVAnalysisHistory = async(cvId) => {
+// Get the complete analysis history for a particular CV.
+const getCVAnalysisHistory = async (cvId) => {
   const analyses = await CVAnalysis.findAll({
-    where: {cvId},
-    order: [["createdAt", "DESC"]]
-  })
+    where: { cvId },
+    order: [["createdAt", "DESC"]],
+  });
 
-  return analyses
-}
+  return analyses;
+};
 
-//function: save ai analysis result from ai team
+// Save the AI analysis result in the database.
 const saveAIAnalysisResult = async (analysisId, analysisResult) => {
   const analysis = await CVAnalysis.findByPk(analysisId);
 
@@ -102,8 +133,7 @@ const saveAIAnalysisResult = async (analysisId, analysisResult) => {
   return analysis;
 };
 
-//function: process a cv and save extracted text and sanitized extracted ext
-
+// Process a CV and save its analysis and SkillGap records.
 const processCVAnalysis = async ({
   cv,
   targetJobTitle,
@@ -111,11 +141,12 @@ const processCVAnalysis = async ({
   careerStage,
   primaryGoal,
 }) => {
-  // This AI integration currently supports Gap Analysis only.
+  // Currently, only Gap Analysis is supported.
   if (primaryGoal !== "Gap Analysis") {
     const error = new Error(
       "AI analysis is currently available for Gap Analysis only."
     );
+
     error.statusCode = 501;
     throw error;
   }
@@ -128,6 +159,7 @@ const processCVAnalysis = async ({
 
   if (!extractedText || !extractedText.trim()) {
     const error = new Error("No readable text was found in the CV.");
+
     error.statusCode = 400;
     throw error;
   }
@@ -147,7 +179,6 @@ const processCVAnalysis = async ({
   });
 
   // Step 4: Create a pending SkillGap record.
-  // cv.userId identifies the owner of this uploaded CV.
   const skillGap = await createSkillGap(cv.userId, {
     cvId: cv.id,
     targetJobTitle,
@@ -156,7 +187,7 @@ const processCVAnalysis = async ({
   });
 
   try {
-    // Step 5: Send sanitized text to Gemini.
+    // Step 5: Send sanitized CV text to the AI service.
     const aiResponse = await analyzeCVWithAI({
       cvId: cv.id,
       sanitizedText,
@@ -167,7 +198,11 @@ const processCVAnalysis = async ({
 
     const result = aiResponse.analysis;
 
-    // Step 6: Save the full AI result in CVAnalysis.
+    if (!result) {
+      throw new Error("The AI service returned no analysis result.");
+    }
+
+    // Step 6: Save the AI analysis result.
     const savedAnalysis = await saveAIAnalysisResult(
       analysis.id,
       result
@@ -193,14 +228,14 @@ const processCVAnalysis = async ({
       throw new Error("Could not save the SkillGap analysis result.");
     }
 
-    // Return both records to the controller.
+    // Return both saved records to the controller.
     return {
       analysis: savedAnalysis,
       skillGap: completedSkillGap,
       sanitizedText,
     };
   } catch (error) {
-    // Record the failed status if AI processing or result saving fails.
+    // Mark the SkillGap record as failed if processing fails.
     try {
       await failSkillGapAnalysis(skillGap.id, cv.userId);
     } catch (statusError) {
@@ -214,5 +249,12 @@ const processCVAnalysis = async ({
   }
 };
 
-
-export { extractTextFromCV, saveExtractedText, getCVAnalysis, sanitizeCVText, saveAIAnalysisResult, processCVAnalysis, getCVAnalysisHistory };
+export {
+  extractTextFromCV,
+  saveExtractedText,
+  getCVAnalysis,
+  sanitizeCVText,
+  saveAIAnalysisResult,
+  processCVAnalysis,
+  getCVAnalysisHistory,
+};
