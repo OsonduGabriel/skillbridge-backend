@@ -1,6 +1,7 @@
 import express from "express";
 import { Router } from "express";
 import opportunityRoutes from "./opportunity.routes.js";
+import roadmapRoutes from "./roadmap.routes.js";
 import authRoutes from "./auth.routes.js";
 import userRoutes from "./user.routes.js";
 import profileRoutes from "./profile.routes.js";
@@ -14,6 +15,7 @@ import skillgapRoutes from "./skillgap.routes.js";
 const router = express.Router();
 
 router.use("/opportunities", opportunityRoutes);
+router.use("/roadmaps", roadmapRoutes);
 
 // Authentication
 router.use("/auth", authRoutes);

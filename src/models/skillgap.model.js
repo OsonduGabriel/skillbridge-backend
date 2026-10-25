@@ -1,6 +1,12 @@
 import { DataTypes } from "sequelize";
 import sequelize from "../config/database.js";
 
+const lowercaseStringArray = (value) =>
+  Array.isArray(value) &&
+  value.every(
+    (item) => typeof item === "string" && item.length > 0 && item === item.toLowerCase(),
+  );
+
 const SkillGap = sequelize.define(
   "SkillGap",
   {
@@ -33,19 +39,22 @@ const SkillGap = sequelize.define(
     currentSkills: {
       type: DataTypes.JSONB,
       allowNull: false,
-      defaultValue: []
+      defaultValue: [],
+      validate: { isLowercaseStringArray: lowercaseStringArray },
     },
 
     requiredSkills: {
       type: DataTypes.JSONB,
       allowNull: false,
-      defaultValue: []
+      defaultValue: [],
+      validate: { isLowercaseStringArray: lowercaseStringArray },
     },
 
     missingSkills: {
       type: DataTypes.JSONB,
       allowNull: false,
-      defaultValue: []
+      defaultValue: [],
+      validate: { isLowercaseStringArray: lowercaseStringArray },
     },
 
     analysisResult: {
@@ -63,7 +72,9 @@ const SkillGap = sequelize.define(
   {
     tableName: "skill_gaps",
     timestamps: true,
-  }
+    indexes: [{ fields: ["userId"] }],
+  },
 );
 
 export default SkillGap;
+

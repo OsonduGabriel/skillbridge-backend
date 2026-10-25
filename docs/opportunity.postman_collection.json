@@ -1,14 +1,17 @@
 {
   "info": {
-    "name": "SkillBridge Opportunities",
-    "description": "Opportunity CRUD, filtering, and admin aggregation. Set tokens locally in collection variables.",
+    "name": "SkillBridge API",
+    "description": "Opportunity and Career Roadmap requests. Set tokens and record IDs locally in collection variables.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     { "key": "baseUrl", "value": "http://localhost:5000/api/v1" },
     { "key": "adminToken", "value": "" },
     { "key": "studentToken", "value": "" },
-    { "key": "opportunityId", "value": "" }
+    { "key": "opportunityId", "value": "" },
+    { "key": "roadmapId", "value": "" },
+    { "key": "taskId", "value": "" },
+    { "key": "skillGapId", "value": "" }
   ],
   "item": [
     {
@@ -96,6 +99,98 @@
         "method": "POST",
         "header": [{ "key": "Authorization", "value": "Bearer {{studentToken}}" }],
         "url": "{{baseUrl}}/opportunities/aggregate"
+      }
+    },
+    {
+      "name": "Generate roadmap, provider deferred",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{studentToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": { "mode": "raw", "raw": "{\n  \"skillGapId\": \"{{skillGapId}}\"\n}" },
+        "url": "{{baseUrl}}/roadmaps/generate"
+      }
+    },
+    {
+      "name": "List roadmaps",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{studentToken}}" }],
+        "url": "{{baseUrl}}/roadmaps"
+      }
+    },
+    {
+      "name": "Read roadmap",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{studentToken}}" }],
+        "url": "{{baseUrl}}/roadmaps/{{roadmapId}}"
+      }
+    },
+    {
+      "name": "Update roadmap",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{studentToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": { "mode": "raw", "raw": "{\n  \"status\": \"active\"\n}" },
+        "url": "{{baseUrl}}/roadmaps/{{roadmapId}}"
+      }
+    },
+    {
+      "name": "Delete roadmap",
+      "request": {
+        "method": "DELETE",
+        "header": [{ "key": "Authorization", "value": "Bearer {{studentToken}}" }],
+        "url": "{{baseUrl}}/roadmaps/{{roadmapId}}"
+      }
+    },
+    {
+      "name": "Add roadmap task",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{studentToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": { "mode": "raw", "raw": "{\n  \"phase\": 30,\n  \"title\": \"Practice SQL joins\",\n  \"description\": \"Complete a relational joins exercise.\",\n  \"taskType\": \"practice\",\n  \"skill\": \"postgresql\"\n}" },
+        "url": "{{baseUrl}}/roadmaps/{{roadmapId}}/tasks"
+      }
+    },
+    {
+      "name": "Update roadmap task status",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{studentToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": { "mode": "raw", "raw": "{\n  \"status\": \"done\"\n}" },
+        "url": "{{baseUrl}}/roadmaps/{{roadmapId}}/tasks/{{taskId}}"
+      }
+    },
+    {
+      "name": "Delete roadmap task",
+      "request": {
+        "method": "DELETE",
+        "header": [{ "key": "Authorization", "value": "Bearer {{studentToken}}" }],
+        "url": "{{baseUrl}}/roadmaps/{{roadmapId}}/tasks/{{taskId}}"
+      }
+    },
+    {
+      "name": "Roadmap phase validation failure",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{studentToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": { "mode": "raw", "raw": "{\n  \"phase\": 15,\n  \"title\": \"Invalid phase\",\n  \"description\": \"This should fail validation.\",\n  \"taskType\": \"practice\"\n}" },
+        "url": "{{baseUrl}}/roadmaps/{{roadmapId}}/tasks"
       }
     }
   ]
