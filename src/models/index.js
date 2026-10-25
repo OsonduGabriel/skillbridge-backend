@@ -4,6 +4,8 @@ import RoadmapTask from "./roadmap-task.model.js";
 import SkillGap from "./skillgap.model.js";
 import CV from "./cv.model.js";
 import CVAnalysis from "./cv.analysis.model.js";
+import Matching from "./matching.model.js";
+import Opportunity from "./opportunity.model.js";
 
 User.hasMany(Roadmap, { as: "roadmaps", foreignKey: "userId" });
 Roadmap.belongsTo(User, { as: "owner", foreignKey: "userId" });
@@ -63,9 +65,33 @@ SkillGap.belongsTo(CV, {
   as: "cv",
 });
 
+//Matching and opportunity
+Matching.belongsTo(Opportunity, {
+  foreignKey: "opportunityId",
+  as: "opportunity",
+});
+
+Opportunity.hasMany(Matching, {
+  foreignKey: "opportunityId",
+  as: "matches",
+});
+
+// User and Career Matching
+User.hasMany(Matching, {
+  foreignKey: "userId",
+  as: "careerMatches",
+});
+
+Matching.belongsTo(User, {
+  foreignKey: "userId",
+  as: "user",
+});
+
 export {
   User,
   CV,
   CVAnalysis,
-  SkillGap
+  SkillGap,
+  Matching,
+  Opportunity,
 };

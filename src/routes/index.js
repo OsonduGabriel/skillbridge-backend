@@ -10,6 +10,7 @@ import recommendationRoutes from "./recommendation.routes.js";
 import progressRoutes from "./progress.routes.js";
 import cvRoutes from "./cv.routes.js";
 import skillgapRoutes from "./skillgap.routes.js";
+import matchingRoutes from "./matching.routes.js";
 
 
 const router = express.Router();
@@ -40,5 +41,8 @@ router.use("/cvs", cvRoutes);
 
 // Skill-gap analysis
 router.use("/skill-gaps", skillgapRoutes);
+
+//Matching
+router.use("/matching", matchingRoutes);
 
 export default router;
