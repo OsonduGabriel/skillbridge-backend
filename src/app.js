@@ -25,7 +25,7 @@ app.get("/", (req, res) => {
 });
 
 // Swagger documentation
-app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.use( "/api-docs",  swaggerUi.serve,  swaggerUi.setup(swaggerSpec));
 
 // API routes: mounted once through the central router.
 app.use("/api/v1", Routes);
