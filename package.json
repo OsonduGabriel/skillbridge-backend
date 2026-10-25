@@ -22,6 +22,7 @@
   "homepage": "https://github.com/OsonduGabriel/skillbridge-backend#readme",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.130.0",
+    "@google/genai": "^2.30.0",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.6",
     "dotenv": "^18.0.5",
@@ -37,7 +38,10 @@
     "pdf-parse": "^2.4.5",
     "pg": "^8.23.1",
     "pg-hstore": "^2.3.4",
-    "sequelize": "^6.37.8"
+    "sequelize": "^6.37.8",
+    "swagger-jsdoc": "^6.3.0",
+    "swagger-ui-express": "^5.0.1",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"
