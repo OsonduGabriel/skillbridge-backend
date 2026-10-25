@@ -1,30 +1,25 @@
-//*Extract text from CV using cv analysis and save in database
+//*Extract text from CV using cv analysis and save in database 
 
 import fs from "fs/promises";
 import path from "path";
-import { PDFParse } from "pdf-parse";
+import pdfParse from "pdf-parse";
 import mammoth from "mammoth";
 import CVAnalysis from "../models/cv.analysis.model.js";
 import sanitizePII from "../utils/pii.sanitizer.js";
-import { analyzeCVWithAI } from "./ai.service.js";
+import {
+  createSkillGap, completeSkillGapAnalysis, failSkillGapAnalysis} from "./skillgap.service.js";
 
 //function: extract text from cv
 const extractTextFromCV = async (filePath, fileType) => {
   const extension = path.extname(filePath).toLowerCase();
 
   //cv in pdf format
- if (fileType === "application/pdf" || extension === ".pdf") {
-  const fileBuffer = await fs.readFile(filePath);
+  if (fileType === "application/pdf" || extension === ".pdf") {
+    const fileBuffer = await fs.readFile(filePath);
+    const pdfData = await pdfParse(fileBuffer);
 
-  const parser = new PDFParse({ data: fileBuffer });
-
-  try {
-    const pdfData = await parser.getText();
     return pdfData.text;
-  } finally {
-    await parser.destroy();
   }
-}
 
     //cv in word docx format
   if (fileType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || extension === ".docx") {
@@ -108,12 +103,19 @@ const saveAIAnalysisResult = async (analysisId, analysisResult) => {
 };
 
 //function: process a cv and save extracted text and sanitized extracted ext
-const processCVAnalysis = async ({ cv, targetJobTitle, industryFocus, careerStage, primaryGoal}) => {
-  // The current AI integration supports Skill Gap Analysis only.
-  // Do not return a skill-gap result for a different goal.
+
+const processCVAnalysis = async ({
+  cv,
+  targetJobTitle,
+  industryFocus,
+  careerStage,
+  primaryGoal,
+}) => {
+  // This AI integration currently supports Gap Analysis only.
   if (primaryGoal !== "Gap Analysis") {
     const error = new Error(
-      "AI analysis is currently available for Gap Analysis only.");
+      "AI analysis is currently available for Gap Analysis only."
+    );
     error.statusCode = 501;
     throw error;
   }
@@ -124,18 +126,16 @@ const processCVAnalysis = async ({ cv, targetJobTitle, industryFocus, careerStag
     cv.fileType
   );
 
-  // Reject files that contain no extractable text.
   if (!extractedText || !extractedText.trim()) {
-    const error = new Error(
-      "No readable text was found in the CV.");
+    const error = new Error("No readable text was found in the CV.");
     error.statusCode = 400;
     throw error;
   }
 
-  // Step 2: Remove confidential information.
+  // Step 2: Remove personally identifiable information.
   const sanitizedText = await sanitizeCVText(extractedText);
 
-  // Step 3: Save the CV text and analysis details.
+  // Step 3: Save the initial CV analysis record.
   const analysis = await saveExtractedText({
     cvId: cv.id,
     targetJobTitle,
@@ -146,30 +146,73 @@ const processCVAnalysis = async ({ cv, targetJobTitle, industryFocus, careerStag
     sanitizedText,
   });
 
-  // Step 4: Send the sanitized CV text to the AI service.
-  const aiResponse = await analyzeCVWithAI({
+  // Step 4: Create a pending SkillGap record.
+  // cv.userId identifies the owner of this uploaded CV.
+  const skillGap = await createSkillGap(cv.userId, {
     cvId: cv.id,
-    sanitizedText,
     targetJobTitle,
-    industryFocus,
-    careerStage,
+    currentSkills: [],
+    requiredSkills: [],
   });
 
-  // Step 5: Save the AI result to the same analysis record.
-  const savedAnalysis = await saveAIAnalysisResult(
-    analysis.id,
-    aiResponse.analysis
-  );
+  try {
+    // Step 5: Send sanitized text to Gemini.
+    const aiResponse = await analyzeCVWithAI({
+      cvId: cv.id,
+      sanitizedText,
+      targetJobTitle,
+      industryFocus,
+      careerStage,
+    });
 
-  if (!savedAnalysis) {
-    throw new Error("Could not save the AI analysis result.");
+    const result = aiResponse.analysis;
+
+    // Step 6: Save the full AI result in CVAnalysis.
+    const savedAnalysis = await saveAIAnalysisResult(
+      analysis.id,
+      result
+    );
+
+    if (!savedAnalysis) {
+      throw new Error("Could not save the CV analysis result.");
+    }
+
+    // Step 7: Complete the SkillGap record using the AI result.
+    const completedSkillGap = await completeSkillGapAnalysis(
+      skillGap.id,
+      cv.userId,
+      {
+        currentSkills: result.identified_skills,
+        requiredSkills: [],
+        missingSkills: result.skill_gaps,
+        analysisResult: result,
+      }
+    );
+
+    if (!completedSkillGap) {
+      throw new Error("Could not save the SkillGap analysis result.");
+    }
+
+    // Return both records to the controller.
+    return {
+      analysis: savedAnalysis,
+      skillGap: completedSkillGap,
+      sanitizedText,
+    };
+  } catch (error) {
+    // Record the failed status if AI processing or result saving fails.
+    try {
+      await failSkillGapAnalysis(skillGap.id, cv.userId);
+    } catch (statusError) {
+      console.error(
+        "Could not update SkillGap failure status:",
+        statusError.message
+      );
+    }
+
+    throw error;
   }
-
-  // Return the saved record and sanitized text to the controller.
-  return {
-    analysis: savedAnalysis,
-    sanitizedText,
-  };
 };
+
 
 export { extractTextFromCV, saveExtractedText, getCVAnalysis, sanitizeCVText, saveAIAnalysisResult, processCVAnalysis, getCVAnalysisHistory };
