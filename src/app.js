@@ -1,6 +1,7 @@
 
+import "dotenv/config";
+
 import express from "express";
-import dotenv from "dotenv";
 import swaggerUi from "swagger-ui-express";
 import swaggerSpec from "./swagger/swagger.js";
 import { errorHandler } from "./middleware/error.middleware.js";
@@ -9,12 +10,12 @@ import "./models/index.js";
 import "./models/associations.model.js";
 import Routes from "./routes/index.js";
 
-dotenv.config();
-
 const app = express();
 
+// Parse incoming JSON requests.
 app.use(express.json());
 
+// API health check.
 app.get("/", (req, res) => {
   res.status(200).json({
     success: true,
@@ -24,13 +25,18 @@ app.get("/", (req, res) => {
   });
 });
 
-// Swagger documentation
-app.use( "/api-docs",  swaggerUi.serve,  swaggerUi.setup(swaggerSpec));
+// Swagger documentation.
+app.use(  "/api-docs",  swaggerUi.serve,  swaggerUi.setup(swaggerSpec));
 
-// API routes: mounted once through the central router.
+// Expose the OpenAPI specification as a JSON file.
+app.get("/api-docs.json", (req, res) => {
+  res.status(200).json(swaggerSpec);
+});
+
+// Mount API routes.
 app.use("/api/v1", Routes);
 
-// 404 middleware
+// Handle unknown routes.
 app.use((req, res) => {
   res.status(404).json({
     success: false,
@@ -41,24 +47,30 @@ app.use((req, res) => {
 // Error handler must remain last.
 app.use(errorHandler);
 
-const PORT = process.env.PORT || 5007;
+const PORT = process.env.PORT || 3000;
 
 async function startServer() {
   try {
+    // Verify that PostgreSQL is reachable before starting the API.
     await sequelize.authenticate();
     console.log("Database connected successfully.");
 
-    // Keep your existing development synchronization behavior.
-    await sequelize.sync();
-    console.log("Models synchronized.");
+    if (process.env.DB_SYNC === "true") {
+      await sequelize.sync();
+      console.log("Database models synchronized.");
+    } else {
+      console.log("Automatic database synchronization is disabled.");
+    }
 
     app.listen(PORT, "0.0.0.0", () => {
-      console.log(`Server running on ${PORT}`);
+      console.log(`SkillBridge API listening on port ${PORT}`);
     });
   } catch (error) {
-    console.error("Failed to start the server or connect to the database.");
+    console.error("Failed to start SkillBridge API.");
     console.error(error);
-    process.exitCode = 1;
+
+    // Exit with a failure status so deployment platforms can detect it.
+    process.exit(1);
   }
 }
 
