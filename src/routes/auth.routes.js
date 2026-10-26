@@ -1,3 +1,9 @@
+/**
+ * @swagger
+ * tags:
+ *   - name: Authentication
+ *     description: User registration, login, and password recovery
+ */
 
 /**
  * @swagger
@@ -6,35 +12,24 @@
  *     tags:
  *       - Authentication
  *     summary: Register a new user
+ *     description: Creates a student account. The password is hashed before storage, and the new account is initially unverified.
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             required:
- *               - name
- *               - email
- *               - password
- *             properties:
- *               name:
- *                 type: string
- *                 example: Gabriel Osondu
- *               email:
- *                 type: string
- *                 format: email
- *                 example: gabriel@example.com
- *               password:
- *                 type: string
- *                 format: password
- *                 example: ExamplePassword123!
+ *             $ref: '#/components/schemas/RegisterRequest'
  *     responses:
  *       201:
- *         description: User registered successfully
+ *         description: Registration successful.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/RegisterResponse'
  *       400:
- *         description: Invalid registration data
- *       409:
- *         description: Email already exists
+ *         description: Required registration fields are missing.
+ *       500:
+ *         description: Registration failed.
  */
 
 /**
@@ -44,27 +39,24 @@
  *     tags:
  *       - Authentication
  *     summary: Log in a user
+ *     description: Authenticates a user and returns their profile and a JWT valid for seven days.
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             required:
- *               - email
- *               - password
- *             properties:
- *               email:
- *                 type: string
- *                 format: email
- *               password:
- *                 type: string
- *                 format: password
+ *             $ref: '#/components/schemas/LoginRequest'
  *     responses:
  *       200:
- *         description: Login successful; may return an access token
- *       401:
- *         description: Invalid credentials
+ *         description: Login successful.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/LoginResponse'
+ *       400:
+ *         description: Email or password is missing.
+ *       500:
+ *         description: Login failed.
  */
 
 /**
@@ -74,23 +66,27 @@
  *     tags:
  *       - Authentication
  *     summary: Request a password reset code
+ *     description: >
+ *       Requests a six-digit password reset code. The code expires after
+ *       ten minutes. The same success message is returned whether or not
+ *       an account exists for the supplied email address.
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             required:
- *               - email
- *             properties:
- *               email:
- *                 type: string
- *                 format: email
+ *             $ref: '#/components/schemas/ForgotPasswordRequest'
  *     responses:
  *       200:
- *         description: Password reset request processed
+ *         description: Password reset request processed.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AuthMessageResponse'
  *       400:
- *         description: Invalid request
+ *         description: Email is missing.
+ *       500:
+ *         description: Password reset request failed.
  */
 
 /**
@@ -100,26 +96,24 @@
  *     tags:
  *       - Authentication
  *     summary: Verify a password reset code
+ *     description: Checks the reset code against the stored hash, expiry, and attempt limit.
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             required:
- *               - email
- *               - code
- *             properties:
- *               email:
- *                 type: string
- *                 format: email
- *               code:
- *                 type: string
+ *             $ref: '#/components/schemas/VerifyResetCodeRequest'
  *     responses:
  *       200:
- *         description: Reset code verified
+ *         description: Reset code verified successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AuthMessageResponse'
  *       400:
- *         description: Invalid or expired reset code
+ *         description: Email or code is missing.
+ *       500:
+ *         description: Reset code verification failed.
  */
 
 /**
@@ -129,30 +123,28 @@
  *     tags:
  *       - Authentication
  *     summary: Reset a user's password
+ *     description: >
+ *       Resets the password when the supplied code is valid and has not
+ *       expired. The new password must contain at least eight characters.
+ *       A successful reset clears the stored reset code and resets the
+ *       failed-attempt counter.
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             required:
- *               - email
- *               - code
- *               - newPassword
- *             properties:
- *               email:
- *                 type: string
- *                 format: email
- *               code:
- *                 type: string
- *               newPassword:
- *                 type: string
- *                 format: password
+ *             $ref: '#/components/schemas/ResetPasswordRequest'
  *     responses:
  *       200:
- *         description: Password reset successful
+ *         description: Password reset successful.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AuthMessageResponse'
  *       400:
- *         description: Invalid request or reset code
+ *         description: Required fields are missing or the new password is too short.
+ *       500:
+ *         description: Password reset failed.
  */
 
 

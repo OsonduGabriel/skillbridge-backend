@@ -1,41 +1,28 @@
-
 /**
- * SKILL ROUTES DOCUMENTATION
- *
- * Base path: /api/v1/skills
- *
- * Public:
- * - Browse the skill catalogue.
- *
- * Authenticated users:
- * - View, add, update, and remove their own skills.
- *
- * Admin:
- * - Create, update, and deactivate catalogue skills.
- *
  * @swagger
  * tags:
- *   name: Skills
- *   description: Browse the skill catalogue and manage user skills
- */
-
-/**
- * @swagger
+ *   - name: Skills
+ *     description: Browse the skill catalogue and manage user skills
+ *
  * /api/v1/skills:
  *   get:
  *     summary: Get the skill catalogue
  *     description: Retrieve available skills from the public catalogue.
- *     tags: [Skills]
+ *     tags:
+ *       - Skills
  *     responses:
  *       200:
- *         description: Skills retrieved successfully.
- *       500:
- *         description: Failed to retrieve skills.
+ *         description: Skills retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SkillListResponse'
  *
  *   post:
  *     summary: Create a catalogue skill
  *     description: Add a skill to the catalogue. Admin access is required.
- *     tags: [Skills]
+ *     tags:
+ *       - Skills
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -43,36 +30,40 @@
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             description: Skill details required by the application.
+ *             $ref: '#/components/schemas/CreateSkillRequest'
  *     responses:
  *       201:
- *         description: Skill created successfully.
+ *         description: Catalogue skill created successfully
  *       400:
- *         description: Invalid skill data.
+ *         description: Invalid skill data
  *       401:
- *         description: Authentication required.
+ *         description: Authentication required
  *       403:
- *         description: Admin access required.
+ *         description: Admin access required
  *
- * @swagger
  * /api/v1/skills/me:
  *   get:
  *     summary: Get my skills
- *     description: Retrieve skills associated with the authenticated user.
- *     tags: [Skills]
+ *     description: Retrieve active catalogue skills associated with the authenticated user.
+ *     tags:
+ *       - Skills
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: User skills retrieved successfully.
+ *         description: User skills retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UserSkillListResponse'
  *       401:
- *         description: Authentication required.
+ *         description: Authentication required
  *
  *   post:
  *     summary: Add a skill to my profile
- *     description: Associate a skill with the authenticated user.
- *     tags: [Skills]
+ *     description: Associate an active catalogue skill with the authenticated user.
+ *     tags:
+ *       - Skills
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -80,125 +71,132 @@
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             description: User skill details required by the application.
+ *             $ref: '#/components/schemas/AddUserSkillRequest'
  *     responses:
  *       201:
- *         description: Skill added successfully.
+ *         description: Skill added successfully
  *       400:
- *         description: Invalid skill data.
+ *         description: Invalid skill data
  *       401:
- *         description: Authentication required.
+ *         description: Authentication required
+ *       404:
+ *         description: Requested skill not found or inactive
+ *       409:
+ *         description: Skill already exists in the user's profile
  *
- * @swagger
  * /api/v1/skills/me/{skillId}:
  *   patch:
- *     summary: Update one of my skills
- *     description: Update a skill associated with the authenticated user.
- *     tags: [Skills]
+ *     summary: Update a skill in my profile
+ *     description: Update the proficiency level of a skill associated with the authenticated user.
+ *     tags:
+ *       - Skills
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - in: path
- *         name: skillId
+ *       - name: skillId
+ *         in: path
  *         required: true
+ *         description: ID of the catalogue skill associated with the user
  *         schema:
  *           type: string
- *         description: ID of the user's skill record.
+ *           format: uuid
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             description: User skill fields accepted by the update endpoint.
+ *             $ref: '#/components/schemas/UpdateUserSkillRequest'
  *     responses:
  *       200:
- *         description: User skill updated successfully.
+ *         description: User skill updated successfully
  *       400:
- *         description: Invalid skill data.
+ *         description: Invalid skill data
  *       401:
- *         description: Authentication required.
+ *         description: Authentication required
  *       404:
- *         description: User skill not found.
+ *         description: User skill or active catalogue skill not found
  *
  *   delete:
  *     summary: Remove a skill from my profile
- *     description: Remove a skill associated with the authenticated user.
- *     tags: [Skills]
+ *     description: Remove a skill association belonging to the authenticated user.
+ *     tags:
+ *       - Skills
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - in: path
- *         name: skillId
+ *       - name: skillId
+ *         in: path
  *         required: true
+ *         description: ID of the catalogue skill associated with the user
  *         schema:
  *           type: string
- *         description: ID of the user's skill record.
+ *           format: uuid
  *     responses:
  *       200:
- *         description: User skill removed successfully.
+ *         description: User skill removed successfully
  *       401:
- *         description: Authentication required.
+ *         description: Authentication required
  *       404:
- *         description: User skill not found.
+ *         description: User skill not found
  *
- * @swagger
  * /api/v1/skills/{id}:
  *   patch:
  *     summary: Update a catalogue skill
  *     description: Update a skill in the catalogue. Admin access is required.
- *     tags: [Skills]
+ *     tags:
+ *       - Skills
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - in: path
- *         name: id
+ *       - name: id
+ *         in: path
  *         required: true
+ *         description: ID of the catalogue skill
  *         schema:
  *           type: string
- *         description: ID of the catalogue skill.
+ *           format: uuid
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             description: Catalogue skill fields accepted by the update endpoint.
+ *             $ref: '#/components/schemas/UpdateSkillRequest'
  *     responses:
  *       200:
- *         description: Catalogue skill updated successfully.
+ *         description: Catalogue skill updated successfully
  *       400:
- *         description: Invalid skill data.
+ *         description: Invalid skill data
  *       401:
- *         description: Authentication required.
+ *         description: Authentication required
  *       403:
- *         description: Admin access required.
+ *         description: Admin access required
  *       404:
- *         description: Skill not found.
+ *         description: Catalogue skill not found
  *
  *   delete:
  *     summary: Deactivate a catalogue skill
  *     description: Deactivate a skill in the catalogue. Admin access is required.
- *     tags: [Skills]
+ *     tags:
+ *       - Skills
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - in: path
- *         name: id
+ *       - name: id
+ *         in: path
  *         required: true
+ *         description: ID of the catalogue skill to deactivate
  *         schema:
  *           type: string
- *         description: ID of the catalogue skill to deactivate.
+ *           format: uuid
  *     responses:
  *       200:
- *         description: Catalogue skill deactivated successfully.
+ *         description: Catalogue skill deactivated successfully
  *       401:
- *         description: Authentication required.
+ *         description: Authentication required
  *       403:
- *         description: Admin access required.
+ *         description: Admin access required
  *       404:
- *         description: Skill not found.
+ *         description: Catalogue skill not found
  */
 
 import express from "express";

@@ -1,22 +1,15 @@
 /**
- * CAREER ROADMAP ROUTES DOCUMENTATION
- *
- * Base path: /api/v1/roadmaps
- * All roadmap routes require JWT authentication.
- *
  * @swagger
  * tags:
- *   name: Career Roadmap
- *   description: Generate and manage career learning roadmaps and tasks
- */
-
-/**
- * @swagger
+ *   - name: Career Roadmap
+ *     description: Generate and manage career learning roadmaps and tasks
+ *
  * /api/v1/roadmaps/generate:
  *   post:
  *     summary: Generate a career roadmap
- *     description: Generate a roadmap for the authenticated user using the supplied details.
- *     tags: [Career Roadmap]
+ *     description: Generate a roadmap for the authenticated user using a skill-gap analysis. Generation is currently unavailable until an AI provider is selected.
+ *     tags:
+ *       - Career Roadmap
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -24,213 +17,217 @@
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             description: Roadmap generation details required by the application.
+ *             $ref: '#/components/schemas/GenerateRoadmapRequest'
  *     responses:
- *       200:
- *         description: Roadmap generated successfully.
- *       201:
- *         description: Roadmap created successfully.
- *       400:
- *         description: Invalid roadmap generation data.
+ *       503:
+ *         description: Roadmap generation is unavailable until an AI provider is selected
  *       401:
- *         description: Authentication required.
+ *         description: Authentication required
+ *       404:
+ *         description: Skill-gap analysis not found
  *
- * @swagger
  * /api/v1/roadmaps:
  *   get:
  *     summary: List my roadmaps
- *     description: Retrieve roadmaps belonging to the authenticated user.
- *     tags: [Career Roadmap]
+ *     description: Retrieve roadmaps belonging to the authenticated user, ordered by creation date.
+ *     tags:
+ *       - Career Roadmap
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Roadmaps retrieved successfully.
+ *         description: Roadmaps retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/RoadmapListResponse'
  *       401:
- *         description: Authentication required.
+ *         description: Authentication required
  *
- * @swagger
  * /api/v1/roadmaps/{id}:
  *   get:
  *     summary: Get a roadmap by ID
- *     tags: [Career Roadmap]
+ *     description: Retrieve a roadmap and its tasks, ordered by phase and position.
+ *     tags:
+ *       - Career Roadmap
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - in: path
- *         name: id
+ *       - name: id
+ *         in: path
  *         required: true
+ *         description: ID of the roadmap
  *         schema:
  *           type: string
  *           format: uuid
- *         description: ID of the roadmap.
  *     responses:
  *       200:
- *         description: Roadmap retrieved successfully.
- *       400:
- *         description: Invalid roadmap ID.
+ *         description: Roadmap retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/RoadmapResponse'
  *       401:
- *         description: Authentication required.
+ *         description: Authentication required
  *       404:
- *         description: Roadmap not found.
+ *         description: Roadmap not found
  *
  *   patch:
  *     summary: Update a roadmap
- *     description: Update an existing roadmap belonging to the authenticated user.
- *     tags: [Career Roadmap]
+ *     description: Update permitted fields of a roadmap belonging to the authenticated user.
+ *     tags:
+ *       - Career Roadmap
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - in: path
- *         name: id
+ *       - name: id
+ *         in: path
  *         required: true
+ *         description: ID of the roadmap to update
  *         schema:
  *           type: string
  *           format: uuid
- *         description: ID of the roadmap to update.
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             description: Roadmap fields accepted by the update endpoint.
+ *             $ref: '#/components/schemas/UpdateRoadmapRequest'
  *     responses:
  *       200:
- *         description: Roadmap updated successfully.
- *       400:
- *         description: Invalid roadmap data.
+ *         description: Roadmap updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/RoadmapResponse'
  *       401:
- *         description: Authentication required.
+ *         description: Authentication required
  *       404:
- *         description: Roadmap not found.
+ *         description: Roadmap not found
  *
  *   delete:
  *     summary: Delete a roadmap
  *     description: Delete a roadmap belonging to the authenticated user.
- *     tags: [Career Roadmap]
+ *     tags:
+ *       - Career Roadmap
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - in: path
- *         name: id
+ *       - name: id
+ *         in: path
  *         required: true
+ *         description: ID of the roadmap to delete
  *         schema:
  *           type: string
  *           format: uuid
- *         description: ID of the roadmap to delete.
  *     responses:
  *       200:
- *         description: Roadmap deleted successfully.
+ *         description: Roadmap deleted successfully
  *       401:
- *         description: Authentication required.
+ *         description: Authentication required
  *       404:
- *         description: Roadmap not found.
+ *         description: Roadmap not found
  *
- * @swagger
  * /api/v1/roadmaps/{id}/tasks:
  *   post:
  *     summary: Create a roadmap task
  *     description: Add a task to a roadmap belonging to the authenticated user.
- *     tags: [Career Roadmap]
+ *     tags:
+ *       - Career Roadmap
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - in: path
- *         name: id
+ *       - name: id
+ *         in: path
  *         required: true
+ *         description: ID of the roadmap
  *         schema:
  *           type: string
  *           format: uuid
- *         description: ID of the roadmap.
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             description: Roadmap task details required by the application.
+ *             $ref: '#/components/schemas/CreateRoadmapTaskRequest'
  *     responses:
  *       201:
- *         description: Roadmap task created successfully.
- *       400:
- *         description: Invalid task data.
+ *         description: Roadmap task created successfully
  *       401:
- *         description: Authentication required.
+ *         description: Authentication required
  *       404:
- *         description: Roadmap not found.
+ *         description: Roadmap not found
+ *       422:
+ *         description: Invalid task values or skill-gap association
  *
- * @swagger
  * /api/v1/roadmaps/{id}/tasks/{taskId}:
  *   patch:
  *     summary: Update a roadmap task
- *     description: Update a task within the specified roadmap.
- *     tags: [Career Roadmap]
+ *     description: Update a task belonging to the specified roadmap.
+ *     tags:
+ *       - Career Roadmap
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - in: path
- *         name: id
+ *       - name: id
+ *         in: path
  *         required: true
+ *         description: ID of the roadmap
  *         schema:
  *           type: string
  *           format: uuid
- *         description: ID of the roadmap.
- *       - in: path
- *         name: taskId
+ *       - name: taskId
+ *         in: path
  *         required: true
+ *         description: ID of the task to update
  *         schema:
  *           type: string
  *           format: uuid
- *         description: ID of the task to update.
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             description: Task fields accepted by the update endpoint.
+ *             $ref: '#/components/schemas/UpdateRoadmapTaskRequest'
  *     responses:
  *       200:
- *         description: Roadmap task updated successfully.
- *       400:
- *         description: Invalid roadmap or task data.
+ *         description: Roadmap task updated successfully
  *       401:
- *         description: Authentication required.
+ *         description: Authentication required
  *       404:
- *         description: Roadmap or task not found.
+ *         description: Roadmap or task not found
+ *       422:
+ *         description: Invalid task values or skill-gap association
  *
  *   delete:
  *     summary: Delete a roadmap task
  *     description: Remove a task from the specified roadmap.
- *     tags: [Career Roadmap]
+ *     tags:
+ *       - Career Roadmap
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - in: path
- *         name: id
+ *       - name: id
+ *         in: path
  *         required: true
+ *         description: ID of the roadmap
  *         schema:
  *           type: string
  *           format: uuid
- *         description: ID of the roadmap.
- *       - in: path
- *         name: taskId
+ *       - name: taskId
+ *         in: path
  *         required: true
+ *         description: ID of the task to delete
  *         schema:
  *           type: string
  *           format: uuid
- *         description: ID of the task to delete.
  *     responses:
  *       200:
- *         description: Roadmap task deleted successfully.
- *       400:
- *         description: Invalid roadmap or task ID.
+ *         description: Roadmap task deleted successfully
  *       401:
- *         description: Authentication required.
+ *         description: Authentication required
  *       404:
- *         description: Roadmap or task not found.
+ *         description: Roadmap or task not found
  */
 
 import { Router } from "express";

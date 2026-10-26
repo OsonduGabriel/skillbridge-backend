@@ -1,103 +1,54 @@
 
 import swaggerJsdoc from "swagger-jsdoc";
-import path from "path";
-import { fileURLToPath } from "url";
-
-// Import schema objects
-import userSchema from "./schemas/user.schema.js";
-import authSchema from "./schemas/auth.schema.js";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import schemas from "./schemas/index.js";
 
 const options = {
   definition: {
-    openapi: "3.0.0",
+    openapi: "3.0.3",
 
     info: {
       title: "SkillBridge API",
       version: "1.0.0",
       description:
-        "API documentation and testing interface for the SkillBridge backend.",
+        "REST API for CV analysis, skill gap analysis, career matching, learning roadmaps, opportunities, and user progress tracking.",
     },
 
     servers: [
       {
         url: "http://localhost:3000",
-        description: "Local development server",
+        description: "Local development",
       },
     ],
 
     components: {
-      // Combine reusable schemas
-      schemas: {
-        ...userSchema,
-        ...authSchema,
-      },
-
-      // JWT authentication configuration
       securitySchemes: {
         bearerAuth: {
           type: "http",
           scheme: "bearer",
           bearerFormat: "JWT",
-          description:
-            "Enter your JWT access token. Do not include the word Bearer.",
+          description: "Enter your JWT access token.",
         },
       },
+
+      schemas,
     },
 
-    tags: [
-      {
-        name: "Authentication",
-        description: "Registration, login, and password recovery",
+      parameters: {
+    CVId: {
+      name: "cvId",
+      in: "path",
+      required: true,
+      description: "UUID of the CV.",
+      schema: {
+        type: "string",
+        format: "uuid",
       },
-      {
-        name: "Users",
-        description: "User account management and administration",
-      },
-      {
-        name: "Profile",
-        description: "User profile management",
-      },
-      {
-        name: "CV",
-        description: "CV upload and analysis",
-      },
-      {
-        name: "Skill Gap",
-        description: "Skill gap analysis",
-      },
-      {
-        name: "Skills",
-        description: "Skill catalogue and user skills management",
-      },
-      {
-        name: "Career Matching",
-        description: "Career and opportunity matching",
-      },
-      {
-        name: "Career Roadmap",
-        description: "Learning roadmap management",
-      },
-      {
-        name: "Opportunities",
-        description: "Career opportunity management",
-      },
-      {
-        name: "Progress",
-        description: "User learning progress tracking",
-      },
-      {
-        name: "Recommendations",
-        description: "Career and learning recommendations",
-      },
-    ],
+      example: "550e8400-e29b-41d4-a716-446655440000",
+    },
   },
+},
 
-  // Swagger scans route files for endpoint documentation.
-  // Reusable schemas are imported directly above.
-  apis: [path.join(__dirname, "../routes/*.js")],
+  apis: ["./src/routes/*.js"],
 };
 
 const swaggerSpec = swaggerJsdoc(options);

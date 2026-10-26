@@ -1,6 +1,4 @@
-
 const authSchema = {
-  // User registration request
   RegisterRequest: {
     type: "object",
     required: ["fullName", "email", "password"],
@@ -18,12 +16,12 @@ const authSchema = {
         type: "string",
         format: "password",
         minLength: 8,
-        example: "StrongPassword123!",
+        example: "ExamplePassword123!",
       },
     },
+    additionalProperties: false,
   },
 
-  // User login request
   LoginRequest: {
     type: "object",
     required: ["email", "password"],
@@ -36,12 +34,12 @@ const authSchema = {
       password: {
         type: "string",
         format: "password",
-        example: "StrongPassword123!",
+        example: "ExamplePassword123!",
       },
     },
+    additionalProperties: false,
   },
 
-  // Forgot password request
   ForgotPasswordRequest: {
     type: "object",
     required: ["email"],
@@ -52,9 +50,9 @@ const authSchema = {
         example: "gabriel@example.com",
       },
     },
+    additionalProperties: false,
   },
 
-  // Verify reset code request
   VerifyResetCodeRequest: {
     type: "object",
     required: ["email", "code"],
@@ -66,12 +64,14 @@ const authSchema = {
       },
       code: {
         type: "string",
+        pattern: "^\\d{6}$",
         example: "123456",
+        description: "Six-digit password reset code.",
       },
     },
+    additionalProperties: false,
   },
 
-  // Reset password request
   ResetPasswordRequest: {
     type: "object",
     required: ["email", "code", "newPassword"],
@@ -83,25 +83,27 @@ const authSchema = {
       },
       code: {
         type: "string",
+        pattern: "^\\d{6}$",
         example: "123456",
+        description: "Six-digit password reset code.",
       },
       newPassword: {
         type: "string",
         format: "password",
         minLength: 8,
-        example: "NewStrongPassword123!",
+        example: "NewSecurePassword123!",
       },
     },
+    additionalProperties: false,
   },
 
-  // Public user details returned by authentication
   AuthUser: {
     type: "object",
+    required: ["id", "fullName", "email", "role", "isVerified"],
     properties: {
       id: {
         type: "string",
         format: "uuid",
-        example: "550e8400-e29b-41d4-a716-446655440000",
       },
       fullName: {
         type: "string",
@@ -114,7 +116,6 @@ const authSchema = {
       },
       role: {
         type: "string",
-        enum: ["student", "mentor", "employer", "admin"],
         example: "student",
       },
       isVerified: {
@@ -124,9 +125,9 @@ const authSchema = {
     },
   },
 
-  // Registration response
   RegisterResponse: {
     type: "object",
+    required: ["success", "message", "data"],
     properties: {
       success: {
         type: "boolean",
@@ -142,9 +143,9 @@ const authSchema = {
     },
   },
 
-  // Login response
   LoginResponse: {
     type: "object",
+    required: ["success", "message", "data"],
     properties: {
       success: {
         type: "boolean",
@@ -156,23 +157,23 @@ const authSchema = {
       },
       data: {
         type: "object",
+        required: ["user", "token"],
         properties: {
           user: {
             $ref: "#/components/schemas/AuthUser",
           },
           token: {
             type: "string",
-            description: "JWT access token. Expires in 7 days.",
-            example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+            description: "JWT access token valid for seven days.",
           },
         },
       },
     },
   },
 
-  // Standard message response
-  ApiMessageResponse: {
+  AuthMessageResponse: {
     type: "object",
+    required: ["success", "message"],
     properties: {
       success: {
         type: "boolean",
@@ -180,7 +181,7 @@ const authSchema = {
       },
       message: {
         type: "string",
-        example: "Operation completed successfully",
+        example: "If the account exists, a reset code will be sent.",
       },
     },
   },

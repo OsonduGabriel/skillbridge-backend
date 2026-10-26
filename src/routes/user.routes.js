@@ -1,33 +1,34 @@
 /**
  * @swagger
  * tags:
- *   name: Users
- *   description: User account management and administration
- */
-
-/**
- * @swagger
+ *   - name: Users
+ *     description: User account management and administration
+ *
  * /api/v1/users/me:
  *   get:
  *     summary: Get my user profile
  *     description: Retrieves the authenticated user's account information.
- *     tags: [Users]
+ *     tags:
+ *       - Users
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: User information retrieved successfully.
+ *         description: User retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UserResponse'
  *       401:
- *         description: Authentication required.
+ *         description: Authentication required
  *       404:
- *         description: User not found.
- *       500:
- *         description: Internal server error.
+ *         description: User not found
  *
  *   put:
  *     summary: Update my user account
- *     description: Updates the authenticated user's account information.
- *     tags: [Users]
+ *     description: Updates the authenticated user's account information using fields accepted by the user service.
+ *     tags:
+ *       - Users
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -35,77 +36,77 @@
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             description: User fields accepted for updating, as defined by the controller.
+ *             $ref: '#/components/schemas/UpdateUserRequest'
  *     responses:
  *       200:
- *         description: User account updated successfully.
+ *         description: User updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UserResponse'
  *       400:
- *         description: Invalid request data.
+ *         description: Invalid request data
  *       401:
- *         description: Authentication required.
+ *         description: Authentication required
  *       404:
- *         description: User not found.
- *       500:
- *         description: Internal server error.
+ *         description: User not found
  *
  *   delete:
  *     summary: Delete my user account
  *     description: Deletes the authenticated user's account.
- *     tags: [Users]
+ *     tags:
+ *       - Users
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: User account deleted successfully.
- *       204:
- *         description: User account deleted successfully with no response body.
+ *         description: User deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UserMessageResponse'
  *       401:
- *         description: Authentication required.
+ *         description: Authentication required
  *       404:
- *         description: User not found.
- *       500:
- *         description: Internal server error.
- */
-
-/**
- * @swagger
+ *         description: User not found
+ *
  * /api/v1/users/current:
  *   get:
  *     summary: Get the current authenticated user
- *     description: Retrieves information about the currently authenticated user.
- *     tags: [Users]
+ *     description: Retrieves the user information attached to the authenticated request.
+ *     tags:
+ *       - Users
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Current user retrieved successfully.
+ *         description: Authenticated user retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CurrentUserResponse'
  *       401:
- *         description: Authentication required.
- *       404:
- *         description: User not found.
- *       500:
- *         description: Internal server error.
- */
-
-/**
- * @swagger
+ *         description: Authentication required
+ *
  * /api/v1/users/admin:
  *   get:
  *     summary: Get the admin dashboard
- *     description: Retrieves dashboard information for users with the admin role.
- *     tags: [Users]
+ *     description: Retrieves dashboard information for an authenticated user with the admin role.
+ *     tags:
+ *       - Users
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Admin dashboard data retrieved successfully.
+ *         description: Admin dashboard data retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AdminDashboardResponse'
  *       401:
- *         description: Authentication required.
+ *         description: Authentication required
  *       403:
- *         description: Access denied. Admin role required.
- *       500:
- *         description: Internal server error.
+ *         description: Access denied. Admin role required
  */
 
 import express from "express";

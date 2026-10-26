@@ -1,4 +1,3 @@
-
 const userSchema = {
   User: {
     type: "object",
@@ -6,83 +5,49 @@ const userSchema = {
       id: {
         type: "string",
         format: "uuid",
-        example: "550e8400-e29b-41d4-a716-446655440000",
+        description: "Unique user identifier",
       },
-
       fullName: {
         type: "string",
-        example: "Gabriel Osondu",
+        description: "User's full name",
+        example: "John Doe",
       },
-
       email: {
         type: "string",
         format: "email",
-        example: "gabriel@example.com",
+        description: "User's email address",
+        example: "john@example.com",
       },
-
       role: {
         type: "string",
-        enum: ["student", "mentor", "employer", "admin"],
-        example: "student",
+        description: "User's assigned role",
+        example: "user",
       },
-
       isVerified: {
         type: "boolean",
-        example: false,
-      },
-
-      createdAt: {
-        type: "string",
-        format: "date-time",
-        example: "2026-10-25T10:30:00.000Z",
-      },
-
-      updatedAt: {
-        type: "string",
-        format: "date-time",
-        example: "2026-10-25T10:30:00.000Z",
+        description: "Whether the user's account has been verified",
+        example: true,
       },
     },
   },
 
-  CreateUser: {
-    type: "object",
-    required: ["fullName", "email", "password"],
-    properties: {
-      fullName: {
-        type: "string",
-        example: "Gabriel Osondu",
-      },
-
-      email: {
-        type: "string",
-        format: "email",
-        example: "gabriel@example.com",
-      },
-
-      password: {
-        type: "string",
-        format: "password",
-        minLength: 8,
-        example: "StrongPassword123!",
-      },
-    },
-  },
-
-  UpdateUser: {
+  UpdateUserRequest: {
     type: "object",
     properties: {
       fullName: {
         type: "string",
-        example: "Gabriel Osondu",
+        description: "Updated full name",
+        example: "John Doe",
       },
-
       email: {
         type: "string",
         format: "email",
-        example: "gabriel@example.com",
+        description: "Updated email address",
+        example: "john@example.com",
       },
     },
+    additionalProperties: false,
+    minProperties: 1,
   },
 
   UserResponse: {
@@ -92,14 +57,70 @@ const userSchema = {
         type: "boolean",
         example: true,
       },
-
       message: {
         type: "string",
         example: "User retrieved successfully",
       },
-
       data: {
         $ref: "#/components/schemas/User",
+      },
+    },
+  },
+
+  CurrentUserResponse: {
+    type: "object",
+    properties: {
+      success: {
+        type: "boolean",
+        example: true,
+      },
+      message: {
+        type: "string",
+        example: "Authenticated user retrieved successfully",
+      },
+      data: {
+        type: "object",
+        properties: {
+          user: {
+            $ref: "#/components/schemas/User",
+          },
+        },
+      },
+    },
+  },
+
+  AdminDashboardResponse: {
+    type: "object",
+    properties: {
+      success: {
+        type: "boolean",
+        example: true,
+      },
+      message: {
+        type: "string",
+        example: "Welcome to the admin dashboard.",
+      },
+      data: {
+        type: "object",
+        properties: {
+          user: {
+            $ref: "#/components/schemas/User",
+          },
+        },
+      },
+    },
+  },
+
+  UserMessageResponse: {
+    type: "object",
+    properties: {
+      success: {
+        type: "boolean",
+        example: true,
+      },
+      message: {
+        type: "string",
+        example: "User deleted successfully",
       },
     },
   },

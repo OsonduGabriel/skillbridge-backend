@@ -1,4 +1,3 @@
-
 /**
  * PROFILE ROUTES DOCUMENTATION
  *
@@ -7,8 +6,8 @@
  *
  * @swagger
  * tags:
- *   name: Profile
- *   description: Retrieve and update the authenticated user's profile
+ *   - name: Profile
+ *     description: Retrieve and update the authenticated user's profile
  */
 
 /**
@@ -16,22 +15,28 @@
  * /api/v1/profiles/me:
  *   get:
  *     summary: Get my profile
- *     description: Retrieve the profile of the currently authenticated user.
- *     tags: [Profile]
+ *     description: Retrieve the authenticated user's account details and associated profile, if one exists.
+ *     tags:
+ *       - Profile
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: Profile retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ProfileUserResponse'
  *       401:
  *         description: Authentication required.
  *       404:
- *         description: Profile not found.
+ *         description: User not found.
  *
  *   put:
  *     summary: Update my profile
- *     description: Update the profile of the currently authenticated user.
- *     tags: [Profile]
+ *     description: Create a profile if one does not exist, or update the authenticated user's existing profile. Only the supported profile fields are applied.
+ *     tags:
+ *       - Profile
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -39,18 +44,20 @@
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             description: Profile fields accepted by the update endpoint.
+ *             $ref: '#/components/schemas/UpdateProfileRequest'
  *     responses:
  *       200:
  *         description: Profile updated successfully.
- *       400:
- *         description: Invalid profile data.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ProfileResponse'
  *       401:
  *         description: Authentication required.
  *       404:
- *         description: Profile not found.
+ *         description: User not found.
  */
+
 
 import express from "express";
 import {getMyProfile,updateMyProfile,} from "../controllers/profile.controller.js";

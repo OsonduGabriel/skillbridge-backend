@@ -1,5 +1,30 @@
-import { createCV, getUserCVs, deleteCV, updateCV as updateCVService, getCVFile } from "../services/cv.service.js";
 
+import {
+  createCV,
+  getUserCVs,
+  deleteCV,
+  updateCV as updateCVService,
+  getCVFile,
+} from "../services/cv.service.js";
+
+/**
+ * Remove internal storage details before returning a CV to the client.
+ * This does not modify the Sequelize instance or database record.
+ */
+const serializeCV = (cv) => {
+  if (!cv) {
+    return null;
+  }
+
+  const record =
+    typeof cv.toJSON === "function" ? cv.toJSON() : { ...cv };
+
+  delete record.filePath;
+
+  return record;
+};
+
+// Upload a new CV.
 const uploadCV = async (req, res, next) => {
   try {
     const file = req.file;
@@ -26,13 +51,14 @@ const uploadCV = async (req, res, next) => {
     return res.status(201).json({
       success: true,
       message: "CV uploaded successfully.",
-      data: cv,
+      data: serializeCV(cv),
     });
   } catch (error) {
     next(error);
   }
 };
 
+// Retrieve all CVs belonging to the authenticated user.
 const getMyCVs = async (req, res, next) => {
   try {
     const userId = req.user.id;
@@ -42,13 +68,14 @@ const getMyCVs = async (req, res, next) => {
     return res.status(200).json({
       success: true,
       message: "CVs retrieved successfully.",
-      data: cvs,
+      data: cvs.map(serializeCV),
     });
   } catch (error) {
     next(error);
   }
 };
 
+// Delete a CV belonging to the authenticated user.
 const removeCV = async (req, res, next) => {
   try {
     const { cvId } = req.params;
@@ -72,6 +99,7 @@ const removeCV = async (req, res, next) => {
   }
 };
 
+// Replace an existing CV with a newly uploaded file.
 const updateCV = async (req, res, next) => {
   try {
     const { cvId } = req.params;
@@ -84,11 +112,7 @@ const updateCV = async (req, res, next) => {
       });
     }
 
-    const cv = await updateCVService(
-      cvId,
-      userId,
-      req.file
-    );
+    const cv = await updateCVService(cvId, userId, req.file);
 
     if (!cv) {
       return res.status(404).json({
@@ -100,13 +124,14 @@ const updateCV = async (req, res, next) => {
     return res.status(200).json({
       success: true,
       message: "CV updated successfully.",
-      data: cv,
+      data: serializeCV(cv),
     });
   } catch (error) {
     next(error);
   }
 };
 
+// Download a CV without exposing its storage path in a JSON response.
 const downloadCV = async (req, res, next) => {
   try {
     const { cvId } = req.params;
@@ -121,18 +146,20 @@ const downloadCV = async (req, res, next) => {
       });
     }
 
-    return res.download(
-      cv.filePath,
-      cv.fileName,
-      (error) => {
-        if (error) {
-          next(error);
-        }
+    return res.download(cv.filePath, cv.fileName, (error) => {
+      if (error) {
+        next(error);
       }
-    );
+    });
   } catch (error) {
     next(error);
   }
 };
 
-export { uploadCV, getMyCVs, removeCV, updateCV, downloadCV };
+export {
+  uploadCV,
+  getMyCVs,
+  removeCV,
+  updateCV,
+  downloadCV,
+};
