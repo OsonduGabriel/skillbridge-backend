@@ -1,4 +1,4 @@
-import {registerUser,loginUser,forgotPasswordService,verifyResetCodeService,resetPasswordService,} from "../services/auth.service.js";
+import {registerUser,loginUser,forgotPasswordService,verifyResetCodeService,resetPasswordService,verifyEmailService,} from "../services/auth.service.js";
 
 export const register = async (req, res, next) => {
   try {
@@ -11,16 +11,48 @@ export const register = async (req, res, next) => {
       });
     }
 
-    const user = await registerUser({
-      fullName,
-      email,
-      password,
-    });
+    if (password.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must be at least 8 characters long",
+      });
+    }
+
+    const user = await registerUser({ fullName, email, password });
 
     return res.status(201).json({
       success: true,
-      message: "Registration successful",
-      data: user,
+      message: "Registration successful. Check your email for the six-digit verification code.",
+      data: { user },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const verifyEmail = async (req, res, next) => {
+  try {
+    const { email, code } = req.body;
+
+    if (!email || !code) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and verification code are required",
+      });
+    }
+
+    if (!/^\d{6}$/.test(String(code))) {
+      return res.status(400).json({
+        success: false,
+        message: "Verification code must be six digits",
+      });
+    }
+
+    const result = await verifyEmailService(email, String(code));
+
+    return res.status(200).json({
+      success: true,
+      message: result.message,
     });
   } catch (error) {
     next(error);

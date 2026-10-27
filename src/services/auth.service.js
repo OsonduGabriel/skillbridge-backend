@@ -2,8 +2,15 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/user.model.js";
 import crypto from "node:crypto";
+import { sendVerificationEmail } from "../config/mailer.js";
 
-const generateToken = (user) => {
+const VERIFICATION_CODE_EXPIRY_MINUTES = 10;
+const MAX_VERIFICATION_ATTEMPTS = 5;
+
+const hashCode = (code) =>
+  crypto.createHash("sha256").update(code).digest("hex");  
+
+export const generateToken = (user) => {
   return jwt.sign(
     {
       id: user.id,
@@ -16,31 +23,43 @@ const generateToken = (user) => {
   );
 };
 
-export const registerUser = async ({
-  fullName,
-  email,
-  password,
-}) => {
-  // Check if user already exists
+export const registerUser = async ({ fullName, email, password }) => {
+  const normalizedEmail = email.trim().toLowerCase();
+
   const existingUser = await User.findOne({
-    where: { email },
+    where: { email: normalizedEmail },
   });
 
   if (existingUser) {
     throw new Error("User with this email already exists");
   }
 
-  // Hash password
   const hashedPassword = await bcrypt.hash(password, 10);
+  const code = crypto.randomInt(100000, 1000000).toString();
 
-  // Create user
   const user = await User.create({
-    fullName,
-    email,
+    fullName: fullName.trim(),
+    email: normalizedEmail,
     password: hashedPassword,
     role: "student",
     isVerified: false,
+    emailVerificationCodeHash: hashCode(code),
+    emailVerificationExpiresAt: new Date(
+      Date.now() + VERIFICATION_CODE_EXPIRY_MINUTES * 60 * 1000
+    ),
+    emailVerificationAttempts: 0,
   });
+
+  try {
+    await sendVerificationEmail(normalizedEmail, code);
+  } catch (error) {
+    // Keep the account and its verification code so a resend
+    // workflow can be used if email delivery temporarily fails.
+    console.error("Verification email delivery failed:", error.message);
+    throw new Error(
+      "Account created, but the verification email could not be sent. Please contact support to resend it."
+    );
+  }
 
   return {
     id: user.id,
@@ -51,10 +70,51 @@ export const registerUser = async ({
   };
 };
 
+export const verifyEmailService = async (email, code) => {
+  const normalizedEmail = email.trim().toLowerCase();
+
+  const user = await User.findOne({
+    where: { email: normalizedEmail },
+  });
+
+  if (!user || user.isVerified || !user.emailVerificationCodeHash) {
+    throw new Error("Invalid or expired verification code");
+  }
+
+  if (
+    !user.emailVerificationExpiresAt ||
+    user.emailVerificationExpiresAt.getTime() <= Date.now()
+  ) {
+    throw new Error("Invalid or expired verification code");
+  }
+
+  if (user.emailVerificationAttempts >= MAX_VERIFICATION_ATTEMPTS) {
+    throw new Error("Too many attempts. Please request a new code.");
+  }
+
+  user.emailVerificationAttempts += 1;
+
+  if (hashCode(code) !== user.emailVerificationCodeHash) {
+    await user.save();
+    throw new Error("Invalid or expired verification code");
+  }
+
+  user.isVerified = true;
+  user.emailVerificationCodeHash = null;
+  user.emailVerificationExpiresAt = null;
+  user.emailVerificationAttempts = 0;
+
+  await user.save();
+
+  return { message: "Email verified successfully. You can now log in." };
+};
+
 export const loginUser = async ({ email, password }) => {
+  const normalizedEmail = email.trim().toLowerCase();
+
   // Find user
   const user = await User.findOne({
-    where: { email },
+    where: { email: normalizedEmail },
   });
 
   if (!user) {
@@ -70,7 +130,9 @@ export const loginUser = async ({ email, password }) => {
   if (!isPasswordValid) {
     throw new Error("Invalid email or password");
   }
-
+if (!user.isVerified) {
+  throw new Error("Please verify your email before logging in");
+}
   // Generate JWT
   const token = generateToken(user);
 

@@ -149,12 +149,12 @@
 
 
 import express from "express";
-import { register,login,} from "../controllers/auth.controller.js";
-import {forgotPassword,verifyResetCode,resetPassword,} from "../controllers/auth.controller.js";
+import {register,login,forgotPassword,verifyResetCode,resetPassword,verifyEmail,} from "../controllers/auth.controller.js";
 
 const router = express.Router();
 
 router.post("/register", register);
+router.post("/verify-email", verifyEmail);
 router.post("/login", login);
 router.post("/forgot-password", forgotPassword);
 router.post("/verify-reset-code", verifyResetCode);

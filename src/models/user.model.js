@@ -23,7 +23,21 @@ const User = sequelize.define(
         isEmail: true,
       },
     },
+emailVerificationCodeHash: {
+  type: DataTypes.STRING,
+  allowNull: true,
+},
 
+emailVerificationExpiresAt: {
+  type: DataTypes.DATE,
+  allowNull: true,
+},
+
+emailVerificationAttempts: {
+  type: DataTypes.INTEGER,
+  allowNull: false,
+  defaultValue: 0,
+},
     password: {
       type: DataTypes.STRING,
       allowNull: false,
