@@ -14,11 +14,15 @@ const options = {
     },
 
     servers: [
-      {
-        url: "http://localhost:3000",
-        description: "Local development",
-      },
-    ],
+  {
+    url: "https://skillbridge-backend-78ix.onrender.com",
+    description: "Deployed API on Render",
+  },
+  {
+    url: "http://localhost:3000",
+    description: "Local development",
+  },
+],
 
     components: {
       securitySchemes: {
