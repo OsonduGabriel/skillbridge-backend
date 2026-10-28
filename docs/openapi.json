@@ -1,0 +1,5197 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "SkillBridge API",
+    "version": "1.0.0",
+    "description": "REST API for CV analysis, skill gap analysis, career matching, learning roadmaps, opportunities, and user progress tracking."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Local development"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Enter your JWT access token."
+      }
+    },
+    "schemas": {
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Unique user identifier"
+          },
+          "fullName": {
+            "type": "string",
+            "description": "User's full name",
+            "example": "John Doe"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "User's email address",
+            "example": "john@example.com"
+          },
+          "role": {
+            "type": "string",
+            "description": "User's assigned role",
+            "example": "user"
+          },
+          "isVerified": {
+            "type": "boolean",
+            "description": "Whether the user's account has been verified",
+            "example": true
+          }
+        }
+      },
+      "UpdateUserRequest": {
+        "type": "object",
+        "properties": {
+          "fullName": {
+            "type": "string",
+            "description": "Updated full name",
+            "example": "John Doe"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Updated email address",
+            "example": "john@example.com"
+          }
+        },
+        "additionalProperties": false,
+        "minProperties": 1
+      },
+      "UserResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "User retrieved successfully"
+          },
+          "data": {
+            "$ref": "#/components/schemas/User"
+          }
+        }
+      },
+      "CurrentUserResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "Authenticated user retrieved successfully"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "user": {
+                "$ref": "#/components/schemas/User"
+              }
+            }
+          }
+        }
+      },
+      "AdminDashboardResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "Welcome to the admin dashboard."
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "user": {
+                "$ref": "#/components/schemas/User"
+              }
+            }
+          }
+        }
+      },
+      "UserMessageResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "User deleted successfully"
+          }
+        }
+      },
+      "RegisterRequest": {
+        "type": "object",
+        "required": [
+          "fullName",
+          "email",
+          "password"
+        ],
+        "properties": {
+          "fullName": {
+            "type": "string",
+            "example": "Gabriel Osondu"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "gabriel@example.com"
+          },
+          "password": {
+            "type": "string",
+            "format": "password",
+            "minLength": 8,
+            "example": "ExamplePassword123!"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LoginRequest": {
+        "type": "object",
+        "required": [
+          "email",
+          "password"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "gabriel@example.com"
+          },
+          "password": {
+            "type": "string",
+            "format": "password",
+            "example": "ExamplePassword123!"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ForgotPasswordRequest": {
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "gabriel@example.com"
+          }
+        },
+        "additionalProperties": false
+      },
+      "VerifyResetCodeRequest": {
+        "type": "object",
+        "required": [
+          "email",
+          "code"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "gabriel@example.com"
+          },
+          "code": {
+            "type": "string",
+            "pattern": "^\\d{6}$",
+            "example": "123456",
+            "description": "Six-digit password reset code."
+          }
+        },
+        "additionalProperties": false
+      },
+      "ResetPasswordRequest": {
+        "type": "object",
+        "required": [
+          "email",
+          "code",
+          "newPassword"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "gabriel@example.com"
+          },
+          "code": {
+            "type": "string",
+            "pattern": "^\\d{6}$",
+            "example": "123456",
+            "description": "Six-digit password reset code."
+          },
+          "newPassword": {
+            "type": "string",
+            "format": "password",
+            "minLength": 8,
+            "example": "NewSecurePassword123!"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AuthUser": {
+        "type": "object",
+        "required": [
+          "id",
+          "fullName",
+          "email",
+          "role",
+          "isVerified"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fullName": {
+            "type": "string",
+            "example": "Gabriel Osondu"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "gabriel@example.com"
+          },
+          "role": {
+            "type": "string",
+            "example": "student"
+          },
+          "isVerified": {
+            "type": "boolean",
+            "example": false
+          }
+        }
+      },
+      "RegisterResponse": {
+        "type": "object",
+        "required": [
+          "success",
+          "message",
+          "data"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "Registration successful"
+          },
+          "data": {
+            "$ref": "#/components/schemas/AuthUser"
+          }
+        }
+      },
+      "LoginResponse": {
+        "type": "object",
+        "required": [
+          "success",
+          "message",
+          "data"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "Login successful"
+          },
+          "data": {
+            "type": "object",
+            "required": [
+              "user",
+              "token"
+            ],
+            "properties": {
+              "user": {
+                "$ref": "#/components/schemas/AuthUser"
+              },
+              "token": {
+                "type": "string",
+                "description": "JWT access token valid for seven days."
+              }
+            }
+          }
+        }
+      },
+      "AuthMessageResponse": {
+        "type": "object",
+        "required": [
+          "success",
+          "message"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "If the account exists, a reset code will be sent."
+          }
+        }
+      },
+      "CVUploadRequest": {
+        "type": "object",
+        "required": [
+          "cv"
+        ],
+        "properties": {
+          "cv": {
+            "type": "string",
+            "format": "binary",
+            "description": "CV file to upload."
+          }
+        }
+      },
+      "CVAnalysisRequest": {
+        "type": "object",
+        "required": [
+          "careerStage",
+          "primaryGoal"
+        ],
+        "properties": {
+          "targetJobTitle": {
+            "type": "string",
+            "description": "Optional target job title.",
+            "example": "Backend Developer"
+          },
+          "industryFocus": {
+            "type": "string",
+            "description": "Optional industry focus.",
+            "example": "Software Engineering"
+          },
+          "careerStage": {
+            "type": "string",
+            "enum": [
+              "Student",
+              "Entry",
+              "Mid",
+              "Senior",
+              "Pivot"
+            ],
+            "minLength": 1,
+            "example": "Entry"
+          },
+          "primaryGoal": {
+            "type": "string",
+            "enum": [
+              "CV Review",
+              "Gap Analysis",
+              "Roadmap"
+            ],
+            "minLength": 1,
+            "example": "Gap Analysis",
+            "description": "Accepted values are CV Review, Gap Analysis, and Roadmap. Currently, only Gap Analysis is supported by the CV analysis service."
+          }
+        },
+        "additionalProperties": false
+      },
+      "CV": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fileName": {
+            "type": "string",
+            "example": "my-cv.pdf"
+          },
+          "fileType": {
+            "type": "string",
+            "example": "application/pdf"
+          },
+          "fileSize": {
+            "type": "integer",
+            "description": "File size in bytes.",
+            "example": 245760
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CVResponse": {
+        "type": "object",
+        "required": [
+          "success",
+          "message",
+          "data"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "CV uploaded successfully."
+          },
+          "data": {
+            "$ref": "#/components/schemas/CV"
+          }
+        }
+      },
+      "CVListResponse": {
+        "type": "object",
+        "required": [
+          "success",
+          "message",
+          "data"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "CVs retrieved successfully."
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CV"
+            }
+          }
+        }
+      },
+      "CVDeleteResponse": {
+        "type": "object",
+        "required": [
+          "success",
+          "message"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "CV deleted successfully."
+          }
+        }
+      },
+      "CVAnalysis": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "cvId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "targetJobTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "industryFocus": {
+            "type": "string",
+            "nullable": true
+          },
+          "careerStage": {
+            "type": "string",
+            "enum": [
+              "Student",
+              "Entry",
+              "Mid",
+              "Senior",
+              "Pivot"
+            ]
+          },
+          "primaryGoal": {
+            "type": "string",
+            "enum": [
+              "CV Review",
+              "Gap Analysis",
+              "Roadmap"
+            ]
+          },
+          "extractedText": {
+            "type": "string",
+            "description": "Text extracted from the uploaded CV."
+          },
+          "sanitizedText": {
+            "type": "string",
+            "nullable": true,
+            "description": "Extracted CV text after personally identifiable information is sanitized."
+          },
+          "analysisResult": {
+            "type": "object",
+            "nullable": true,
+            "additionalProperties": true,
+            "description": "Saved AI analysis result. Its structure depends on the AI response."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CVSkillGap": {
+        "type": "object",
+        "description": "Skill-gap record returned by the SkillGap service.",
+        "additionalProperties": true,
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "cvId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "targetJobTitle": {
+            "type": "string"
+          },
+          "currentSkills": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "requiredSkills": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "missingSkills": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "completed",
+              "failed"
+            ]
+          }
+        }
+      },
+      "CVAnalysisCreatedData": {
+        "type": "object",
+        "required": [
+          "analysisId",
+          "skillGapId",
+          "targetJobTitle",
+          "industryFocus",
+          "careerStage",
+          "primaryGoal",
+          "analysisResult",
+          "skillGap"
+        ],
+        "properties": {
+          "analysisId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "skillGapId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "targetJobTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "industryFocus": {
+            "type": "string",
+            "nullable": true
+          },
+          "careerStage": {
+            "type": "string",
+            "enum": [
+              "Student",
+              "Entry",
+              "Mid",
+              "Senior",
+              "Pivot"
+            ]
+          },
+          "primaryGoal": {
+            "type": "string",
+            "enum": [
+              "CV Review",
+              "Gap Analysis",
+              "Roadmap"
+            ]
+          },
+          "analysisResult": {
+            "type": "object",
+            "nullable": true,
+            "additionalProperties": true
+          },
+          "skillGap": {
+            "$ref": "#/components/schemas/CVSkillGap"
+          }
+        }
+      },
+      "CVAnalysisCreatedResponse": {
+        "type": "object",
+        "required": [
+          "success",
+          "message",
+          "data"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "CV skill-gap analysis completed successfully."
+          },
+          "data": {
+            "$ref": "#/components/schemas/CVAnalysisCreatedData"
+          }
+        }
+      },
+      "CVAnalysisResponse": {
+        "type": "object",
+        "required": [
+          "success",
+          "message",
+          "data"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "CV analysis retrieved successfully."
+          },
+          "data": {
+            "$ref": "#/components/schemas/CVAnalysis"
+          }
+        }
+      },
+      "CVAnalysisHistoryResponse": {
+        "type": "object",
+        "required": [
+          "success",
+          "message",
+          "data"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "CV analysis history retrieved successfully."
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CVAnalysis"
+            }
+          }
+        }
+      },
+      "SkillGap": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "550e8400-e29b-41d4-a716-446655440000"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "660e8400-e29b-41d4-a716-446655440000"
+          },
+          "cvId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "example": "770e8400-e29b-41d4-a716-446655440000"
+          },
+          "targetJobTitle": {
+            "type": "string",
+            "example": "backend developer"
+          },
+          "currentSkills": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "javascript",
+              "node.js",
+              "express"
+            ]
+          },
+          "requiredSkills": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "javascript",
+              "node.js",
+              "postgresql",
+              "redis"
+            ]
+          },
+          "missingSkills": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "postgresql",
+              "redis"
+            ]
+          },
+          "analysisResult": {
+            "type": "object",
+            "nullable": true,
+            "additionalProperties": true,
+            "description": "Skill-gap analysis result. The exact structure depends on the analysis implementation.",
+            "example": {
+              "summary": "Additional database skills are needed for the target role."
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "completed",
+              "failed"
+            ],
+            "example": "pending"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CreateSkillGapRequest": {
+        "type": "object",
+        "required": [
+          "targetJobTitle"
+        ],
+        "properties": {
+          "cvId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "Optional ID of a CV belonging to the authenticated user."
+          },
+          "targetJobTitle": {
+            "type": "string",
+            "example": "backend developer"
+          },
+          "currentSkills": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "javascript",
+              "node.js",
+              "express"
+            ]
+          },
+          "requiredSkills": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "javascript",
+              "node.js",
+              "postgresql"
+            ]
+          }
+        }
+      },
+      "UpdateSkillGapRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "cvId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "targetJobTitle": {
+            "type": "string",
+            "example": "full-stack developer"
+          },
+          "currentSkills": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "javascript",
+              "react",
+              "node.js"
+            ]
+          },
+          "requiredSkills": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "javascript",
+              "react",
+              "node.js",
+              "postgresql"
+            ]
+          }
+        },
+        "description": "All fields are optional. Updating an accepted field resets the analysis to pending."
+      },
+      "SkillGapResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "Skill-gap analysis retrieved successfully."
+          },
+          "data": {
+            "$ref": "#/components/schemas/SkillGap"
+          }
+        }
+      },
+      "SkillGapListResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "Skill-gap analyses retrieved successfully."
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SkillGap"
+            }
+          }
+        }
+      },
+      "SkillGapDeleteResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "Skill-gap analysis deleted successfully."
+          }
+        }
+      },
+      "Skill": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Unique catalogue skill identifier"
+          },
+          "name": {
+            "type": "string",
+            "example": "JavaScript"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "example": "Programming language used for web development"
+          },
+          "category": {
+            "type": "string",
+            "nullable": true,
+            "example": "Programming"
+          },
+          "isActive": {
+            "type": "boolean",
+            "description": "Whether the skill is available in the catalogue",
+            "example": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "UserSkill": {
+        "type": "object",
+        "properties": {
+          "skillId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "ID of the associated catalogue skill"
+          },
+          "name": {
+            "type": "string",
+            "example": "JavaScript"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "example": "Programming language used for web development"
+          },
+          "category": {
+            "type": "string",
+            "nullable": true,
+            "example": "Programming"
+          },
+          "proficiencyLevel": {
+            "type": "string",
+            "description": "User's proficiency level for this skill",
+            "example": "intermediate"
+          },
+          "addedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CreateSkillRequest": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "JavaScript"
+          },
+          "description": {
+            "type": "string",
+            "example": "Programming language used for web development"
+          },
+          "category": {
+            "type": "string",
+            "example": "Programming"
+          }
+        }
+      },
+      "UpdateSkillRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "JavaScript"
+          },
+          "description": {
+            "type": "string",
+            "example": "Programming language used for web development"
+          },
+          "category": {
+            "type": "string",
+            "example": "Programming"
+          },
+          "isActive": {
+            "type": "boolean",
+            "example": true
+          }
+        },
+        "minProperties": 1
+      },
+      "AddUserSkillRequest": {
+        "type": "object",
+        "required": [
+          "skillId",
+          "proficiencyLevel"
+        ],
+        "properties": {
+          "skillId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "ID of an active skill in the catalogue"
+          },
+          "proficiencyLevel": {
+            "type": "string",
+            "example": "intermediate"
+          }
+        }
+      },
+      "UpdateUserSkillRequest": {
+        "type": "object",
+        "required": [
+          "proficiencyLevel"
+        ],
+        "properties": {
+          "proficiencyLevel": {
+            "type": "string",
+            "example": "advanced"
+          }
+        }
+      },
+      "SkillListResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "Skills retrieved successfully"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Skill"
+            }
+          }
+        }
+      },
+      "UserSkillListResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "User skills retrieved successfully"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UserSkill"
+            }
+          }
+        }
+      },
+      "Roadmap": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "skillGapId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 200,
+            "example": "Backend Developer Learning Roadmap"
+          },
+          "targetRole": {
+            "type": "string",
+            "maxLength": 200,
+            "example": "Backend Developer"
+          },
+          "summary": {
+            "type": "string",
+            "example": "A structured plan for developing backend skills."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "active",
+              "completed",
+              "archived"
+            ],
+            "default": "draft"
+          },
+          "generatedBy": {
+            "type": "string",
+            "enum": [
+              "ai",
+              "manual"
+            ],
+            "default": "manual"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "userId",
+          "title",
+          "targetRole",
+          "summary",
+          "status",
+          "generatedBy",
+          "startDate"
+        ]
+      },
+      "RoadmapTask": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "roadmapId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "phase": {
+            "type": "integer",
+            "enum": [30, 60, 90],
+            "description": "Learning phase in days.",
+            "example": 30
+          },
+          "position": {
+            "type": "integer",
+            "default": 0,
+            "description": "Task position within its phase.",
+            "example": 1
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 200,
+            "example": "Learn Express.js fundamentals"
+          },
+          "description": {
+            "type": "string",
+            "example": "Study routing, middleware, and error handling."
+          },
+          "taskType": {
+            "type": "string",
+            "enum": [
+              "learn",
+              "project",
+              "practice",
+              "apply"
+            ]
+          },
+          "skill": {
+            "type": "string",
+            "maxLength": 100,
+            "nullable": true,
+            "description": "Skill name must be lowercase.",
+            "example": "express"
+          },
+          "recommendationId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "resourceUrl": {
+            "type": "string",
+            "maxLength": 500,
+            "nullable": true,
+            "example": "https://expressjs.com/"
+          },
+          "estimatedHours": {
+            "type": "number",
+            "format": "float",
+            "nullable": true,
+            "example": 5
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "todo",
+              "in_progress",
+              "done"
+            ],
+            "default": "todo"
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "roadmapId",
+          "phase",
+          "position",
+          "title",
+          "description",
+          "taskType",
+          "status"
+        ]
+      },
+      "GenerateRoadmapRequest": {
+        "type": "object",
+        "required": [
+          "skillGapId"
+        ],
+        "properties": {
+          "skillGapId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "ID of the skill-gap analysis used to generate the roadmap."
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateRoadmapRequest": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "targetRole": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "summary": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "active",
+              "completed",
+              "archived"
+            ]
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "minProperties": 1,
+        "additionalProperties": false
+      },
+      "CreateRoadmapTaskRequest": {
+        "type": "object",
+        "required": [
+          "phase",
+          "title",
+          "description",
+          "taskType"
+        ],
+        "properties": {
+          "phase": {
+            "type": "integer",
+            "enum": [30, 60, 90],
+            "example": 30
+          },
+          "position": {
+            "type": "integer",
+            "example": 1
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 200,
+            "example": "Learn Express.js fundamentals"
+          },
+          "description": {
+            "type": "string"
+          },
+          "taskType": {
+            "type": "string",
+            "enum": [
+              "learn",
+              "project",
+              "practice",
+              "apply"
+            ]
+          },
+          "skill": {
+            "type": "string",
+            "maxLength": 100,
+            "description": "Skill name must be lowercase.",
+            "example": "express"
+          },
+          "recommendationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "resourceUrl": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "estimatedHours": {
+            "type": "number",
+            "format": "float",
+            "example": 5
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "todo",
+              "in_progress",
+              "done"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateRoadmapTaskRequest": {
+        "type": "object",
+        "properties": {
+          "phase": {
+            "type": "integer",
+            "enum": [30, 60, 90]
+          },
+          "position": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "description": {
+            "type": "string"
+          },
+          "taskType": {
+            "type": "string",
+            "enum": [
+              "learn",
+              "project",
+              "practice",
+              "apply"
+            ]
+          },
+          "skill": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "recommendationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "resourceUrl": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "estimatedHours": {
+            "type": "number",
+            "format": "float"
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "todo",
+              "in_progress",
+              "done"
+            ]
+          }
+        },
+        "minProperties": 1,
+        "additionalProperties": false
+      },
+      "RoadmapResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "Roadmap retrieved successfully"
+          },
+          "data": {
+            "$ref": "#/components/schemas/Roadmap"
+          }
+        }
+      },
+      "RoadmapListResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "Roadmaps retrieved successfully"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "items": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Roadmap"
+                }
+              }
+            },
+            "required": [
+              "items"
+            ]
+          }
+        }
+      },
+      "RoadmapWithTasksResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "Roadmap retrieved successfully"
+          },
+          "data": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Roadmap"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "tasksByPhase": {
+                    "type": "object",
+                    "required": [
+                      "30",
+                      "60",
+                      "90"
+                    ],
+                    "properties": {
+                      "30": {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/components/schemas/RoadmapTask"
+                        }
+                      },
+                      "60": {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/components/schemas/RoadmapTask"
+                        }
+                      },
+                      "90": {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/components/schemas/RoadmapTask"
+                        }
+                      }
+                    }
+                  }
+                },
+                "required": [
+                  "tasksByPhase"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "RoadmapDeleteResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "Roadmap deleted successfully"
+          },
+          "data": {
+            "type": "object",
+            "nullable": true,
+            "example": null
+          }
+        }
+      },
+      "RoadmapTaskDeleteResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "Roadmap task deleted successfully"
+          },
+          "data": {
+            "type": "object",
+            "nullable": true,
+            "example": null
+          }
+        }
+      },
+      "RecommendationSkill": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "name": {
+            "type": "string",
+            "example": "Express.js"
+          },
+          "category": {
+            "type": "string",
+            "nullable": true,
+            "example": "Backend Development"
+          }
+        }
+      },
+      "Recommendation": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 200,
+            "example": "Express.js Documentation"
+          },
+          "description": {
+            "type": "string",
+            "example": "Learn how to build REST APIs using Express.js."
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "learning_resource",
+              "project"
+            ],
+            "example": "learning_resource"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "maxLength": 2048,
+            "nullable": true,
+            "example": "https://expressjs.com/"
+          },
+          "skillId": {
+            "type": "integer",
+            "example": 1
+          },
+          "difficulty": {
+            "type": "string",
+            "enum": [
+              "beginner",
+              "intermediate",
+              "advanced"
+            ],
+            "default": "beginner",
+            "example": "beginner"
+          },
+          "estimatedHours": {
+            "type": "integer",
+            "minimum": 1,
+            "nullable": true,
+            "example": 5
+          },
+          "isActive": {
+            "type": "boolean",
+            "default": true,
+            "example": true
+          },
+          "skill": {
+            "$ref": "#/components/schemas/RecommendationSkill"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "description",
+          "type",
+          "skillId",
+          "difficulty",
+          "isActive",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "PersonalizedRecommendation": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Recommendation"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "relevanceScore": {
+                "type": "number",
+                "example": 13,
+                "description": "Score calculated from the user's skills."
+              },
+              "careerGoal": {
+                "type": "string",
+                "nullable": true,
+                "example": "Become a Backend Developer"
+              }
+            },
+            "required": [
+              "relevanceScore",
+              "careerGoal"
+            ]
+          }
+        ]
+      },
+      "RecommendationListResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "count": {
+            "type": "integer",
+            "example": 5
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Recommendation"
+            }
+          }
+        },
+        "required": [
+          "success",
+          "count",
+          "data"
+        ]
+      },
+      "PersonalizedRecommendationListResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "count": {
+            "type": "integer",
+            "example": 5
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PersonalizedRecommendation"
+            }
+          }
+        },
+        "required": [
+          "success",
+          "count",
+          "data"
+        ]
+      },
+      "RecommendationResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/Recommendation"
+          }
+        },
+        "required": [
+          "success",
+          "data"
+        ]
+      },
+      "Progress": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "recommendationId": {
+            "type": "integer",
+            "example": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "not_started",
+              "in_progress",
+              "completed"
+            ],
+            "example": "in_progress"
+          },
+          "progressPercentage": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100,
+            "example": 50
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "userId",
+          "recommendationId",
+          "status",
+          "progressPercentage",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "ProgressRecommendation": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Recommendation"
+          }
+        ],
+        "description": "Recommendation associated with the progress record."
+      },
+      "ProgressWithRecommendation": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Progress"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "recommendation": {
+                "$ref": "#/components/schemas/Recommendation"
+              }
+            }
+          }
+        ]
+      },
+      "CreateProgressRequest": {
+        "type": "object",
+        "required": [
+          "recommendationId"
+        ],
+        "properties": {
+          "recommendationId": {
+            "type": "integer",
+            "minimum": 1,
+            "example": 1,
+            "description": "Positive integer ID of the recommendation to track."
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateProgressRequest": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "not_started",
+              "in_progress",
+              "completed"
+            ],
+            "example": "in_progress"
+          },
+          "progressPercentage": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100,
+            "example": 50
+          }
+        },
+        "minProperties": 1,
+        "additionalProperties": false,
+        "description": "Provide status, progressPercentage, or both. Completed items must have progressPercentage set to 100 when that field is supplied."
+      },
+      "ProgressResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "Progress updated successfully."
+          },
+          "data": {
+            "$ref": "#/components/schemas/ProgressWithRecommendation"
+          }
+        },
+        "required": [
+          "success",
+          "data"
+        ]
+      },
+      "ProgressListResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "count": {
+            "type": "integer",
+            "example": 3
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProgressWithRecommendation"
+            }
+          }
+        },
+        "required": [
+          "success",
+          "count",
+          "data"
+        ]
+      },
+      "ProgressDeleteResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "Progress tracking removed."
+          }
+        },
+        "required": [
+          "success",
+          "message"
+        ]
+      },
+      "Profile": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "readOnly": true
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "ID of the user who owns this profile."
+          },
+          "bio": {
+            "type": "string",
+            "nullable": true
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "location": {
+            "type": "string",
+            "nullable": true
+          },
+          "profileImage": {
+            "type": "string",
+            "nullable": true,
+            "description": "Profile image URL or stored image reference."
+          },
+          "education": {
+            "type": "string",
+            "nullable": true
+          },
+          "experience": {
+            "type": "string",
+            "nullable": true
+          },
+          "careerGoal": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "readOnly": true
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "readOnly": true
+          }
+        }
+      },
+      "UpdateProfileRequest": {
+        "type": "object",
+        "description": "Fields that can be supplied when creating or updating a profile. All fields are optional; at least one should be provided.",
+        "properties": {
+          "bio": {
+            "type": "string",
+            "nullable": true
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "location": {
+            "type": "string",
+            "nullable": true
+          },
+          "profileImage": {
+            "type": "string",
+            "nullable": true
+          },
+          "education": {
+            "type": "string",
+            "nullable": true
+          },
+          "experience": {
+            "type": "string",
+            "nullable": true
+          },
+          "careerGoal": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "minProperties": 1
+      },
+      "ProfileUser": {
+        "type": "object",
+        "description": "Authenticated user's account details, excluding the password, with the associated profile when present.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "role": {
+            "type": "string"
+          },
+          "isVerified": {
+            "type": "boolean"
+          },
+          "profile": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Profile"
+              }
+            ],
+            "nullable": true
+          }
+        },
+        "additionalProperties": true
+      },
+      "ProfileResponse": {
+        "type": "object",
+        "required": [
+          "success",
+          "message",
+          "data"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "Profile updated successfully"
+          },
+          "data": {
+            "$ref": "#/components/schemas/Profile"
+          }
+        }
+      },
+      "ProfileUserResponse": {
+        "type": "object",
+        "required": [
+          "success",
+          "message",
+          "data"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "Profile retrieved successfully"
+          },
+          "data": {
+            "$ref": "#/components/schemas/ProfileUser"
+          }
+        }
+      },
+      "Opportunity": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "readOnly": true
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "company": {
+            "type": "string",
+            "maxLength": 150
+          },
+          "description": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "internship",
+              "job",
+              "graduate_program",
+              "fellowship",
+              "freelance"
+            ]
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 100,
+            "nullable": true
+          },
+          "location": {
+            "type": "string",
+            "maxLength": 150,
+            "nullable": true
+          },
+          "workMode": {
+            "type": "string",
+            "enum": [
+              "remote",
+              "hybrid",
+              "onsite"
+            ],
+            "default": "onsite"
+          },
+          "applicationUrl": {
+            "type": "string",
+            "format": "uri",
+            "maxLength": 500
+          },
+          "deadline": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "requiredSkills": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": []
+          },
+          "preferredSkills": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": []
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "expired",
+              "closed"
+            ],
+            "default": "active"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "manual",
+              "aggregated"
+            ],
+            "default": "manual"
+          },
+          "sourceName": {
+            "type": "string",
+            "maxLength": 100,
+            "nullable": true
+          },
+          "externalId": {
+            "type": "string",
+            "maxLength": 255,
+            "nullable": true
+          },
+          "lastSeenAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "readOnly": true
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "readOnly": true
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "company",
+          "description",
+          "type",
+          "workMode",
+          "applicationUrl",
+          "requiredSkills",
+          "preferredSkills",
+          "status",
+          "source",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "CreateOpportunityRequest": {
+        "type": "object",
+        "required": [
+          "title",
+          "company",
+          "description",
+          "type",
+          "applicationUrl"
+        ],
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "company": {
+            "type": "string",
+            "maxLength": 150
+          },
+          "description": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "internship",
+              "job",
+              "graduate_program",
+              "fellowship",
+              "freelance"
+            ]
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "location": {
+            "type": "string",
+            "maxLength": 150
+          },
+          "workMode": {
+            "type": "string",
+            "enum": [
+              "remote",
+              "hybrid",
+              "onsite"
+            ],
+            "default": "onsite"
+          },
+          "applicationUrl": {
+            "type": "string",
+            "format": "uri",
+            "maxLength": 500
+          },
+          "deadline": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "requiredSkills": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "preferredSkills": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateOpportunityRequest": {
+        "type": "object",
+        "description": "Only supplied fields are updated. The source, sourceName, externalId, and lastSeenAt fields are not accepted by the update service.",
+        "minProperties": 1,
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "company": {
+            "type": "string",
+            "maxLength": 150
+          },
+          "description": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "internship",
+              "job",
+              "graduate_program",
+              "fellowship",
+              "freelance"
+            ]
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 100,
+            "nullable": true
+          },
+          "location": {
+            "type": "string",
+            "maxLength": 150,
+            "nullable": true
+          },
+          "workMode": {
+            "type": "string",
+            "enum": [
+              "remote",
+              "hybrid",
+              "onsite"
+            ]
+          },
+          "applicationUrl": {
+            "type": "string",
+            "format": "uri",
+            "maxLength": 500
+          },
+          "deadline": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "requiredSkills": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "preferredSkills": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "expired",
+              "closed"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "OpportunityResponse": {
+        "type": "object",
+        "required": [
+          "success",
+          "message",
+          "data"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/Opportunity"
+          }
+        }
+      },
+      "OpportunityListResponse": {
+        "type": "object",
+        "required": [
+          "success",
+          "message",
+          "data"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "Opportunities retrieved successfully"
+          },
+          "data": {
+            "type": "object",
+            "required": [
+              "items",
+              "pagination"
+            ],
+            "properties": {
+              "items": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Opportunity"
+                }
+              },
+              "pagination": {
+                "type": "object",
+                "required": [
+                  "page",
+                  "limit",
+                  "total",
+                  "totalPages"
+                ],
+                "properties": {
+                  "page": {
+                    "type": "integer"
+                  },
+                  "limit": {
+                    "type": "integer"
+                  },
+                  "total": {
+                    "type": "integer"
+                  },
+                  "totalPages": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "OpportunityDeleteResponse": {
+        "type": "object",
+        "required": [
+          "success",
+          "message",
+          "data"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "Opportunity deleted successfully"
+          },
+          "data": {
+            "type": "object",
+            "nullable": true,
+            "example": null
+          }
+        }
+      },
+      "OpportunityAggregationSourceResult": {
+        "type": "object",
+        "required": [
+          "sourceName",
+          "processed"
+        ],
+        "properties": {
+          "sourceName": {
+            "type": "string",
+            "description": "Name of the opportunity source adapter.",
+            "example": "ExampleJobBoard"
+          },
+          "processed": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Number of opportunity records processed successfully for this source.",
+            "example": 12
+          },
+          "error": {
+            "type": "string",
+            "description": "Error message when processing this source fails.",
+            "example": "Source request failed"
+          }
+        }
+      },
+      "OpportunityAggregationResponse": {
+        "type": "object",
+        "required": [
+          "success",
+          "message",
+          "data"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "Opportunity aggregation completed"
+          },
+          "data": {
+            "type": "object",
+            "required": [
+              "processed",
+              "sources",
+              "expired"
+            ],
+            "properties": {
+              "processed": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Total number of opportunity records processed successfully across all sources.",
+                "example": 20
+              },
+              "sources": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/OpportunityAggregationSourceResult"
+                }
+              },
+              "expired": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Number of stale opportunities marked as expired.",
+                "example": 3
+              }
+            }
+          }
+        }
+      },
+      "CareerMatch": {
+        "type": "object",
+        "required": [
+          "id",
+          "userId",
+          "opportunityId",
+          "matchPercentage",
+          "matchedSkills",
+          "missingSkills",
+          "status",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Unique identifier of the career match."
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "ID of the user who owns the match."
+          },
+          "opportunityId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "ID of the matched opportunity."
+          },
+          "matchPercentage": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Calculated match score as a percentage.",
+            "example": 85
+          },
+          "matchedSkills": {
+            "type": "array",
+            "description": "User skills that match the opportunity's required or preferred skills.",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "javascript",
+              "node.js",
+              "postgresql"
+            ]
+          },
+          "missingSkills": {
+            "type": "array",
+            "description": "Required opportunity skills not found in the user's skills.",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "docker",
+              "redis"
+            ]
+          },
+          "explanation": {
+            "type": "string",
+            "nullable": true,
+            "description": "Explanation of the calculated match.",
+            "example": "You match 3 of 4 required skills and 2 of 2 preferred skills. Skills to develop: docker."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "completed",
+              "failed"
+            ],
+            "description": "Processing status of the career match.",
+            "example": "completed"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CareerMatchWithOpportunity": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/CareerMatch"
+          },
+          {
+            "type": "object",
+            "required": [
+              "opportunity"
+            ],
+            "properties": {
+              "opportunity": {
+                "$ref": "#/components/schemas/Opportunity"
+              }
+            }
+          }
+        ]
+      },
+      "CareerMatchListResponse": {
+        "type": "object",
+        "required": [
+          "success",
+          "message",
+          "count",
+          "data"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "Career matches generated successfully."
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Number of career matches returned.",
+            "example": 5
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CareerMatchWithOpportunity"
+            }
+          }
+        }
+      }
+    }
+  },
+  "parameters": {
+    "CVId": {
+      "name": "cvId",
+      "in": "path",
+      "required": true,
+      "description": "UUID of the CV.",
+      "schema": {
+        "type": "string",
+        "format": "uuid"
+      },
+      "example": "550e8400-e29b-41d4-a716-446655440000"
+    }
+  },
+  "paths": {
+    "/api/v1/users/me": {
+      "get": {
+        "summary": "Get my user profile",
+        "description": "Retrieves the authenticated user's account information.",
+        "tags": [
+          "Users"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "User not found"
+          }
+        }
+      },
+      "put": {
+        "summary": "Update my user account",
+        "description": "Updates the authenticated user's account information using fields accepted by the user service.",
+        "tags": [
+          "Users"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request data"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "User not found"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete my user account",
+        "description": "Deletes the authenticated user's account.",
+        "tags": [
+          "Users"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserMessageResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "User not found"
+          }
+        }
+      }
+    },
+    "/api/v1/users/current": {
+      "get": {
+        "summary": "Get the current authenticated user",
+        "description": "Retrieves the user information attached to the authenticated request.",
+        "tags": [
+          "Users"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authenticated user retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrentUserResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          }
+        }
+      }
+    },
+    "/api/v1/users/admin": {
+      "get": {
+        "summary": "Get the admin dashboard",
+        "description": "Retrieves dashboard information for an authenticated user with the admin role.",
+        "tags": [
+          "Users"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Admin dashboard data retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminDashboardResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Access denied. Admin role required"
+          }
+        }
+      }
+    },
+    "/api/v1/skill-gaps": {
+      "post": {
+        "summary": "Create a skill-gap analysis",
+        "tags": [
+          "Skill Gap"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSkillGapRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Skill-gap analysis created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillGapResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request data"
+          },
+          "401": {
+            "description": "Authentication required"
+          }
+        }
+      },
+      "get": {
+        "summary": "Get all skill-gap analyses for the authenticated user",
+        "tags": [
+          "Skill Gap"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Skill-gap analyses retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillGapListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          }
+        }
+      }
+    },
+    "/api/v1/skill-gaps/{skillGapId}": {
+      "get": {
+        "summary": "Get a skill-gap analysis by ID",
+        "tags": [
+          "Skill Gap"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "skillGapId",
+            "in": "path",
+            "required": true,
+            "description": "ID of the skill-gap analysis",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Skill-gap analysis retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillGapResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Skill-gap analysis not found"
+          }
+        }
+      },
+      "patch": {
+        "summary": "Update a skill-gap analysis",
+        "tags": [
+          "Skill Gap"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "skillGapId",
+            "in": "path",
+            "required": true,
+            "description": "ID of the skill-gap analysis",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSkillGapRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Skill-gap analysis updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillGapResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request data"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Skill-gap analysis not found"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a skill-gap analysis",
+        "tags": [
+          "Skill Gap"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "skillGapId",
+            "in": "path",
+            "required": true,
+            "description": "ID of the skill-gap analysis",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Skill-gap analysis deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillGapDeleteResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Skill-gap analysis not found"
+          }
+        }
+      }
+    },
+    "/api/v1/skills": {
+      "get": {
+        "summary": "Get the skill catalogue",
+        "description": "Retrieve available skills from the public catalogue.",
+        "tags": [
+          "Skills"
+        ],
+        "responses": {
+          "200": {
+            "description": "Skills retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillListResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a catalogue skill",
+        "description": "Add a skill to the catalogue. Admin access is required.",
+        "tags": [
+          "Skills"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSkillRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Catalogue skill created successfully"
+          },
+          "400": {
+            "description": "Invalid skill data"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Admin access required"
+          }
+        }
+      }
+    },
+    "/api/v1/skills/me": {
+      "get": {
+        "summary": "Get my skills",
+        "description": "Retrieve active catalogue skills associated with the authenticated user.",
+        "tags": [
+          "Skills"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User skills retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserSkillListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          }
+        }
+      },
+      "post": {
+        "summary": "Add a skill to my profile",
+        "description": "Associate an active catalogue skill with the authenticated user.",
+        "tags": [
+          "Skills"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddUserSkillRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Skill added successfully"
+          },
+          "400": {
+            "description": "Invalid skill data"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Requested skill not found or inactive"
+          },
+          "409": {
+            "description": "Skill already exists in the user's profile"
+          }
+        }
+      }
+    },
+    "/api/v1/skills/me/{skillId}": {
+      "patch": {
+        "summary": "Update a skill in my profile",
+        "description": "Update the proficiency level of a skill associated with the authenticated user.",
+        "tags": [
+          "Skills"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "skillId",
+            "in": "path",
+            "required": true,
+            "description": "ID of the catalogue skill associated with the user",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserSkillRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User skill updated successfully"
+          },
+          "400": {
+            "description": "Invalid skill data"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "User skill or active catalogue skill not found"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Remove a skill from my profile",
+        "description": "Remove a skill association belonging to the authenticated user.",
+        "tags": [
+          "Skills"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "skillId",
+            "in": "path",
+            "required": true,
+            "description": "ID of the catalogue skill associated with the user",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User skill removed successfully"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "User skill not found"
+          }
+        }
+      }
+    },
+    "/api/v1/skills/{id}": {
+      "patch": {
+        "summary": "Update a catalogue skill",
+        "description": "Update a skill in the catalogue. Admin access is required.",
+        "tags": [
+          "Skills"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "ID of the catalogue skill",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSkillRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Catalogue skill updated successfully"
+          },
+          "400": {
+            "description": "Invalid skill data"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Admin access required"
+          },
+          "404": {
+            "description": "Catalogue skill not found"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Deactivate a catalogue skill",
+        "description": "Deactivate a skill in the catalogue. Admin access is required.",
+        "tags": [
+          "Skills"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "ID of the catalogue skill to deactivate",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Catalogue skill deactivated successfully"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Admin access required"
+          },
+          "404": {
+            "description": "Catalogue skill not found"
+          }
+        }
+      }
+    },
+    "/api/v1/roadmaps/generate": {
+      "post": {
+        "summary": "Generate a career roadmap",
+        "description": "Generate a roadmap for the authenticated user using a skill-gap analysis. Generation is currently unavailable until an AI provider is selected.",
+        "tags": [
+          "Career Roadmap"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateRoadmapRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Skill-gap analysis not found"
+          },
+          "503": {
+            "description": "Roadmap generation is unavailable until an AI provider is selected"
+          }
+        }
+      }
+    },
+    "/api/v1/roadmaps": {
+      "get": {
+        "summary": "List my roadmaps",
+        "description": "Retrieve roadmaps belonging to the authenticated user, ordered by creation date.",
+        "tags": [
+          "Career Roadmap"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Roadmaps retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoadmapListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          }
+        }
+      }
+    },
+    "/api/v1/roadmaps/{id}": {
+      "get": {
+        "summary": "Get a roadmap by ID",
+        "description": "Retrieve a roadmap and its tasks, ordered by phase and position.",
+        "tags": [
+          "Career Roadmap"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "ID of the roadmap",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Roadmap retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoadmapResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Roadmap not found"
+          }
+        }
+      },
+      "patch": {
+        "summary": "Update a roadmap",
+        "description": "Update permitted fields of a roadmap belonging to the authenticated user.",
+        "tags": [
+          "Career Roadmap"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "ID of the roadmap to update",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRoadmapRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Roadmap updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoadmapResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Roadmap not found"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a roadmap",
+        "description": "Delete a roadmap belonging to the authenticated user.",
+        "tags": [
+          "Career Roadmap"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "ID of the roadmap to delete",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Roadmap deleted successfully"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Roadmap not found"
+          }
+        }
+      }
+    },
+    "/api/v1/roadmaps/{id}/tasks": {
+      "post": {
+        "summary": "Create a roadmap task",
+        "description": "Add a task to a roadmap belonging to the authenticated user.",
+        "tags": [
+          "Career Roadmap"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "ID of the roadmap",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRoadmapTaskRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Roadmap task created successfully"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Roadmap not found"
+          },
+          "422": {
+            "description": "Invalid task values or skill-gap association"
+          }
+        }
+      }
+    },
+    "/api/v1/roadmaps/{id}/tasks/{taskId}": {
+      "patch": {
+        "summary": "Update a roadmap task",
+        "description": "Update a task belonging to the specified roadmap.",
+        "tags": [
+          "Career Roadmap"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "ID of the roadmap",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "taskId",
+            "in": "path",
+            "required": true,
+            "description": "ID of the task to update",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRoadmapTaskRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Roadmap task updated successfully"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Roadmap or task not found"
+          },
+          "422": {
+            "description": "Invalid task values or skill-gap association"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a roadmap task",
+        "description": "Remove a task from the specified roadmap.",
+        "tags": [
+          "Career Roadmap"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "ID of the roadmap",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "taskId",
+            "in": "path",
+            "required": true,
+            "description": "ID of the task to delete",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Roadmap task deleted successfully"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Roadmap or task not found"
+          }
+        }
+      }
+    },
+    "/api/v1/recommendations": {
+      "get": {
+        "summary": "List recommendations",
+        "description": "Retrieve active recommendations, with optional filters for type, skill, and difficulty.",
+        "tags": [
+          "Recommendations"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "learning_resource",
+                "project"
+              ]
+            },
+            "description": "Filter recommendations by type."
+          },
+          {
+            "in": "query",
+            "name": "skillId",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Filter recommendations by a positive skill ID."
+          },
+          {
+            "in": "query",
+            "name": "difficulty",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "beginner",
+                "intermediate",
+                "advanced"
+              ]
+            },
+            "description": "Filter recommendations by difficulty level."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Recommendations retrieved successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecommendationListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid recommendation type, difficulty, or skill ID."
+          },
+          "500": {
+            "description": "Failed to retrieve recommendations."
+          }
+        }
+      }
+    },
+    "/api/v1/recommendations/personalized": {
+      "get": {
+        "summary": "Get personalized recommendations",
+        "description": "Retrieve active recommendations ranked by relevance to the authenticated user's skills.",
+        "tags": [
+          "Recommendations"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Personalized recommendations retrieved successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonalizedRecommendationListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required."
+          },
+          "500": {
+            "description": "Failed to retrieve personalized recommendations."
+          }
+        }
+      }
+    },
+    "/api/v1/recommendations/{id}": {
+      "get": {
+        "summary": "Get a recommendation by ID",
+        "description": "Retrieve a single active recommendation using its positive integer ID.",
+        "tags": [
+          "Recommendations"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Positive integer ID of the recommendation."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Recommendation retrieved successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecommendationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Recommendation ID must be a positive integer."
+          },
+          "404": {
+            "description": "Recommendation not found."
+          },
+          "500": {
+            "description": "Failed to retrieve recommendation."
+          }
+        }
+      }
+    },
+    "/api/v1/progress": {
+      "post": {
+        "summary": "Start progress tracking",
+        "description": "Start tracking an active recommendation for the authenticated user.",
+        "tags": [
+          "Progress"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProgressRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Progress tracking started.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgressResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "recommendationId must be a positive integer."
+          },
+          "401": {
+            "description": "Authentication required."
+          },
+          "404": {
+            "description": "Recommendation not found or inactive."
+          },
+          "409": {
+            "description": "Progress tracking already exists for this recommendation."
+          }
+        }
+      },
+      "get": {
+        "summary": "List my progress records",
+        "description": "Retrieve the authenticated user's progress records, optionally filtered by status.",
+        "tags": [
+          "Progress"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "not_started",
+                "in_progress",
+                "completed"
+              ]
+            },
+            "description": "Filter progress records by status."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Progress records retrieved successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgressListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid progress status."
+          },
+          "401": {
+            "description": "Authentication required."
+          }
+        }
+      }
+    },
+    "/api/v1/progress/{id}": {
+      "get": {
+        "summary": "Get a progress record",
+        "description": "Retrieve one progress record belonging to the authenticated user.",
+        "tags": [
+          "Progress"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the progress record."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Progress record retrieved successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgressResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required."
+          },
+          "404": {
+            "description": "Progress record not found."
+          }
+        }
+      },
+      "patch": {
+        "summary": "Update a progress record",
+        "description": "Update the status or completion percentage of the authenticated user's progress record.",
+        "tags": [
+          "Progress"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the progress record to update."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProgressRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Progress updated successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgressResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid status, invalid percentage, missing update fields, or invalid completion percentage."
+          },
+          "401": {
+            "description": "Authentication required."
+          },
+          "404": {
+            "description": "Progress record not found."
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a progress record",
+        "description": "Remove a progress record belonging to the authenticated user.",
+        "tags": [
+          "Progress"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the progress record to delete."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Progress tracking removed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgressDeleteResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required."
+          },
+          "404": {
+            "description": "Progress record not found."
+          }
+        }
+      }
+    },
+    "/api/v1/profiles/me": {
+      "get": {
+        "summary": "Get my profile",
+        "description": "Retrieve the authenticated user's account details and associated profile, if one exists.",
+        "tags": [
+          "Profile"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Profile retrieved successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileUserResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required."
+          },
+          "404": {
+            "description": "User not found."
+          }
+        }
+      },
+      "put": {
+        "summary": "Update my profile",
+        "description": "Create a profile if one does not exist, or update the authenticated user's existing profile. Only the supported profile fields are applied.",
+        "tags": [
+          "Profile"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProfileRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Profile updated successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required."
+          },
+          "404": {
+            "description": "User not found."
+          }
+        }
+      }
+    },
+    "/api/v1/opportunities/aggregate": {
+      "post": {
+        "summary": "Aggregate career opportunities",
+        "description": "Run the opportunity aggregation service. Admin access is required.",
+        "tags": [
+          "Opportunities"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Opportunity aggregation completed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpportunityAggregationResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required."
+          },
+          "403": {
+            "description": "Admin access required."
+          },
+          "500": {
+            "description": "Failed to aggregate opportunities."
+          }
+        }
+      }
+    },
+    "/api/v1/opportunities": {
+      "get": {
+        "summary": "List career opportunities",
+        "description": "Retrieve opportunities using optional search, skill, category, location, type, work mode, status, and pagination filters.",
+        "tags": [
+          "Opportunities"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "description": "Page number."
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 10
+            },
+            "description": "Number of results per page."
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Search opportunity titles and company names."
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "internship",
+                "job",
+                "graduate_program",
+                "fellowship",
+                "freelance"
+              ]
+            },
+            "description": "Filter by opportunity type."
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by category."
+          },
+          {
+            "in": "query",
+            "name": "location",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by location."
+          },
+          {
+            "in": "query",
+            "name": "workMode",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "remote",
+                "hybrid",
+                "onsite"
+              ]
+            },
+            "description": "Filter by work mode."
+          },
+          {
+            "in": "query",
+            "name": "skill",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by a required or preferred skill."
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "active",
+                "expired",
+                "closed"
+              ],
+              "default": "active"
+            },
+            "description": "Filter by opportunity status."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Opportunities retrieved successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpportunityListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query parameters."
+          },
+          "401": {
+            "description": "Authentication required."
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a career opportunity",
+        "description": "Create a new manually entered opportunity. Admin access is required.",
+        "tags": [
+          "Opportunities"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateOpportunityRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Opportunity created successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpportunityResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid opportunity data."
+          },
+          "401": {
+            "description": "Authentication required."
+          },
+          "403": {
+            "description": "Admin access required."
+          }
+        }
+      }
+    },
+    "/api/v1/opportunities/{id}": {
+      "get": {
+        "summary": "Get an opportunity by ID",
+        "description": "Retrieve a single opportunity by its UUID.",
+        "tags": [
+          "Opportunities"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the opportunity."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Opportunity retrieved successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpportunityResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required."
+          },
+          "404": {
+            "description": "Opportunity not found."
+          }
+        }
+      },
+      "patch": {
+        "summary": "Update an opportunity",
+        "description": "Update an existing opportunity. Admin access is required.",
+        "tags": [
+          "Opportunities"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the opportunity to update."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateOpportunityRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Opportunity updated successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpportunityResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid opportunity ID or update data."
+          },
+          "401": {
+            "description": "Authentication required."
+          },
+          "403": {
+            "description": "Admin access required."
+          },
+          "404": {
+            "description": "Opportunity not found."
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete an opportunity",
+        "description": "Permanently delete an opportunity. Admin access is required.",
+        "tags": [
+          "Opportunities"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the opportunity to delete."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Opportunity deleted successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpportunityDeleteResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required."
+          },
+          "403": {
+            "description": "Admin access required."
+          },
+          "404": {
+            "description": "Opportunity not found."
+          }
+        }
+      }
+    },
+    "/api/v1/matching/generate": {
+      "post": {
+        "summary": "Generate career matches",
+        "description": "Generates and saves career matches for the authenticated user using the latest completed skill-gap analysis and currently active opportunities. Existing matches for the same user and opportunity are updated rather than duplicated. Results are returned in descending match-percentage order.\n",
+        "tags": [
+          "Career Matching"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Career matches generated successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CareerMatchListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "No completed skill-gap analysis exists, or the user's skill-gap analysis contains no current skills.\n"
+          },
+          "401": {
+            "description": "Authentication required."
+          },
+          "500": {
+            "description": "Failed to generate career matches."
+          }
+        }
+      }
+    },
+    "/api/v1/matching": {
+      "get": {
+        "summary": "Get saved career matches",
+        "description": "Retrieves completed career matches belonging to the authenticated user, including only matches whose opportunities are currently active. Results are ordered by match percentage, highest first.\n",
+        "tags": [
+          "Career Matching"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Career matches retrieved successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CareerMatchListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required."
+          },
+          "500": {
+            "description": "Failed to retrieve career matches."
+          }
+        }
+      }
+    },
+    "/api/v1/cvs/upload": {
+      "post": {
+        "summary": "Upload a CV",
+        "description": "Upload a CV file for the authenticated user.",
+        "tags": [
+          "CV"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/CVUploadRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "CV uploaded successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CVResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "No CV file was provided."
+          },
+          "401": {
+            "description": "Authentication required."
+          }
+        }
+      }
+    },
+    "/api/v1/cvs/my-cvs": {
+      "get": {
+        "summary": "Get the authenticated user's CVs",
+        "description": "Retrieves the user's uploaded CVs, newest first.",
+        "tags": [
+          "CV"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "CVs retrieved successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CVListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required."
+          }
+        }
+      }
+    },
+    "/api/v1/cvs/{cvId}/analyze": {
+      "post": {
+        "summary": "Analyze a CV",
+        "description": "Extracts CV text, sanitizes personal information, and saves the analysis and skill-gap results. Currently, only Gap Analysis is supported.",
+        "tags": [
+          "CV"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CVId"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CVAnalysisRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "CV skill-gap analysis completed successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CVAnalysisCreatedResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid analysis input or no readable CV text."
+          },
+          "401": {
+            "description": "Authentication required."
+          },
+          "404": {
+            "description": "CV not found or does not belong to the authenticated user."
+          },
+          "501": {
+            "description": "The requested analysis goal is not currently supported."
+          },
+          "502": {
+            "description": "AI analysis failed or returned an invalid response."
+          }
+        }
+      }
+    },
+    "/api/v1/cvs/{cvId}/analysis": {
+      "get": {
+        "summary": "Get the latest CV analysis",
+        "description": "Retrieves the most recently created analysis for a CV owned by the authenticated user.",
+        "tags": [
+          "CV"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CVId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "CV analysis retrieved successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CVAnalysisResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required."
+          },
+          "404": {
+            "description": "CV or analysis not found."
+          }
+        }
+      }
+    },
+    "/api/v1/cvs/{cvId}/analyses": {
+      "get": {
+        "summary": "Get CV analysis history",
+        "description": "Retrieves all saved analyses for a CV, newest first.",
+        "tags": [
+          "CV"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CVId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "CV analysis history retrieved successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CVAnalysisHistoryResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required."
+          },
+          "404": {
+            "description": "CV not found."
+          }
+        }
+      }
+    },
+    "/api/v1/cvs/{cvId}": {
+      "put": {
+        "summary": "Update a CV",
+        "description": "Replaces an uploaded CV file and deletes its previous analysis records.",
+        "tags": [
+          "CV"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CVId"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/CVUploadRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "CV updated successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CVResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "No replacement CV file was provided."
+          },
+          "401": {
+            "description": "Authentication required."
+          },
+          "404": {
+            "description": "CV not found."
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a CV",
+        "description": "Deletes the CV record and its physical file, if present.",
+        "tags": [
+          "CV"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CVId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "CV deleted successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CVDeleteResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required."
+          },
+          "404": {
+            "description": "CV not found."
+          }
+        }
+      }
+    },
+    "/api/v1/cvs/{cvId}/download": {
+      "get": {
+        "summary": "Download a CV",
+        "description": "Downloads the specified CV file belonging to the authenticated user.",
+        "tags": [
+          "CV"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CVId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "CV file returned for download.",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required."
+          },
+          "404": {
+            "description": "CV not found."
+          }
+        }
+      }
+    },
+    "/api/auth/register": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Register a new user",
+        "description": "Creates a student account. The password is hashed before storage, and the new account is initially unverified.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Registration successful.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Required registration fields are missing."
+          },
+          "500": {
+            "description": "Registration failed."
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Log in a user",
+        "description": "Authenticates a user and returns their profile and a JWT valid for seven days.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Email or password is missing."
+          },
+          "500": {
+            "description": "Login failed."
+          }
+        }
+      }
+    },
+    "/api/auth/forgot-password": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Request a password reset code",
+        "description": "Requests a six-digit password reset code. The code expires after ten minutes. The same success message is returned whether or not an account exists for the supplied email address.\n",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotPasswordRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password reset request processed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthMessageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Email is missing."
+          },
+          "500": {
+            "description": "Password reset request failed."
+          }
+        }
+      }
+    },
+    "/api/auth/verify-reset-code": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Verify a password reset code",
+        "description": "Checks the reset code against the stored hash, expiry, and attempt limit.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyResetCodeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Reset code verified successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthMessageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Email or code is missing."
+          },
+          "500": {
+            "description": "Reset code verification failed."
+          }
+        }
+      }
+    },
+    "/api/auth/reset-password": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Reset a user's password",
+        "description": "Resets the password when the supplied code is valid and has not expired. The new password must contain at least eight characters. A successful reset clears the stored reset code and resets the failed-attempt counter.\n",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password reset successful.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthMessageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Required fields are missing or the new password is too short."
+          },
+          "500": {
+            "description": "Password reset failed."
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Users",
+      "description": "User account management and administration"
+    },
+    {
+      "name": "Skill Gap",
+      "description": "Create, retrieve, update, and delete skill-gap analyses"
+    },
+    {
+      "name": "Skills",
+      "description": "Browse the skill catalogue and manage user skills"
+    },
+    {
+      "name": "Career Roadmap",
+      "description": "Generate and manage career learning roadmaps and tasks"
+    },
+    {
+      "name": "Recommendations",
+      "description": "Browse and retrieve personalized learning and career recommendations"
+    },
+    {
+      "name": "Progress",
+      "description": "Track and manage the authenticated user's learning progress"
+    },
+    {
+      "name": "Profile",
+      "description": "Retrieve and update the authenticated user's profile"
+    },
+    {
+      "name": "Opportunities",
+      "description": "Manage, retrieve, and aggregate career opportunities"
+    },
+    {
+      "name": "Career Matching",
+      "description": "Generate and retrieve career matches"
+    },
+    {
+      "name": "CV",
+      "description": "CV upload, management, download, and analysis"
+    },
+    {
+      "name": "Authentication",
+      "description": "User registration, login, and password recovery"
+    }
+  ]
+}
