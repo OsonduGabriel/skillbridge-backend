@@ -1,0 +1,15 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "skillbridge-api",
+	"main": "cloudflare/worker.js",
+	"compatibility_date": "2026-10-29",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"hyperdrive": [
+		{
+			"binding": "HYPERDRIVE",
+			"id": "d1e926b8c3904ffa8c444d2dd93d13b0"
+		}
+	]
+}
