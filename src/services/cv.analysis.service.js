@@ -6,7 +6,6 @@
 
 import fs from "fs/promises";
 import path from "path";
-import { PDFParse } from "pdf-parse";
 import mammoth from "mammoth";
 
 import CVAnalysis from "../models/cv.analysis.model.js";
@@ -26,6 +25,9 @@ const extractTextFromCV = async (filePath, fileType) => {
 
   // Extract text from PDF files using pdf-parse v2.
   if (fileType === "application/pdf" || extension === ".pdf") {
+    // Load the PDF parser only when PDF extraction is requested.
+    const { PDFParse } = await import("pdf-parse");
+
     const fileBuffer = await fs.readFile(filePath);
 
     const parser = new PDFParse({
@@ -45,7 +47,7 @@ const extractTextFromCV = async (filePath, fileType) => {
   // Extract text from Word DOCX files.
   if (
     fileType ===
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
     extension === ".docx"
   ) {
     const result = await mammoth.extractRawText({

@@ -32,7 +32,16 @@ const RoadmapTask = sequelize.define(
       allowNull: true,
       validate: { isLowercase: true },
     },
-    recommendationId: { type: DataTypes.UUID, allowNull: true },
+    recommendationId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: "recommendations",
+        key: "id",
+      },
+      onUpdate: "CASCADE",
+      onDelete: "SET NULL",
+    },
     resourceUrl: { type: DataTypes.STRING(500), allowNull: true },
     estimatedHours: { type: DataTypes.FLOAT, allowNull: true },
     dueDate: { type: DataTypes.DATE, allowNull: true },

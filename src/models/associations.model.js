@@ -6,6 +6,7 @@ import UserSkill from "./UserSkill.model.js";
 import Recommendation from "./recommendation.model.js";
 import Progress from "./progress.model.js";
 
+// User and Profile relationship
 User.hasOne(Profile, {
   foreignKey: "userId",
   as: "profile",
@@ -17,6 +18,7 @@ Profile.belongsTo(User, {
   as: "user",
 });
 
+// User and UserSkill relationships
 User.hasMany(UserSkill, {
   foreignKey: "userId",
   as: "userSkills",
@@ -27,6 +29,7 @@ UserSkill.belongsTo(User, {
   as: "user",
 });
 
+// Skill and UserSkill relationships
 Skill.hasMany(UserSkill, {
   foreignKey: "skillId",
   as: "userSkills",
@@ -37,7 +40,7 @@ UserSkill.belongsTo(Skill, {
   as: "skill",
 });
 
-// A skill can have multiple recommendations.
+// Skill and Recommendation relationships
 Skill.hasMany(Recommendation, {
   foreignKey: "skillId",
   as: "recommendations",
@@ -48,7 +51,7 @@ Recommendation.belongsTo(Skill, {
   as: "skill",
 });
 
-// A user can track multiple recommendations.
+// User and Progress relationships
 User.hasMany(Progress, {
   foreignKey: "userId",
   as: "learningProgress",
@@ -59,7 +62,7 @@ Progress.belongsTo(User, {
   as: "user",
 });
 
-// A recommendation can be tracked by multiple users.
+// Recommendation and Progress relationships
 Recommendation.hasMany(Progress, {
   foreignKey: "recommendationId",
   as: "progressRecords",
@@ -69,4 +72,12 @@ Progress.belongsTo(Recommendation, {
   foreignKey: "recommendationId",
   as: "recommendation",
 });
-export { User, Profile, Skill, UserSkill,Progress, Recommendation};
+
+export {
+  User,
+  Profile,
+  Skill,
+  UserSkill,
+  Progress,
+  Recommendation,
+};

@@ -1,6 +1,8 @@
-
 import swaggerJsdoc from "swagger-jsdoc";
 import schemas from "./schemas/index.js";
+import generatedOpenApi from "../../cloudflare/openapi.json" with { type: "json" };
+
+const isCloudflare = process.env.CLOUDFLARE_WORKER === "true";
 
 const options = {
   definition: {
@@ -29,28 +31,29 @@ const options = {
           description: "Enter your JWT access token.",
         },
       },
-
       schemas,
     },
 
-      parameters: {
-    CVId: {
-      name: "cvId",
-      in: "path",
-      required: true,
-      description: "UUID of the CV.",
-      schema: {
-        type: "string",
-        format: "uuid",
+    parameters: {
+      CVId: {
+        name: "cvId",
+        in: "path",
+        required: true,
+        description: "UUID of the CV.",
+        schema: {
+          type: "string",
+          format: "uuid",
+        },
+        example: "550e8400-e29b-41d4-a716-446655440000",
       },
-      example: "550e8400-e29b-41d4-a716-446655440000",
     },
   },
-},
 
   apis: ["./src/routes/*.js"],
 };
 
-const swaggerSpec = swaggerJsdoc(options);
+const swaggerSpec = isCloudflare
+  ? generatedOpenApi
+  : swaggerJsdoc(options);
 
 export default swaggerSpec;
