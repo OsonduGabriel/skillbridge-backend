@@ -6,10 +6,10 @@
     "description": "REST API for CV analysis, skill gap analysis, career matching, learning roadmaps, opportunities, and user progress tracking."
   },
   "servers": [
-    {
-      "url": "https://skillbridge-backend-78ix.onrender.com",
-      "description": "Deployed API on Render"
-    },
+      {
+    "url": "https://skillbridge-api.tb-skillbridge-backend.workers.dev",
+    "description": "Cloudflare Workers - Production"
+  },
     {
       "url": "http://localhost:3000",
       "description": "Local development"
@@ -1221,7 +1221,11 @@
           },
           "phase": {
             "type": "integer",
-            "enum": [30, 60, 90],
+            "enum": [
+              30,
+              60,
+              90
+            ],
             "description": "Learning phase in days.",
             "example": 30
           },
@@ -1368,7 +1372,11 @@
         "properties": {
           "phase": {
             "type": "integer",
-            "enum": [30, 60, 90],
+            "enum": [
+              30,
+              60,
+              90
+            ],
             "example": 30
           },
           "position": {
@@ -1431,7 +1439,11 @@
         "properties": {
           "phase": {
             "type": "integer",
-            "enum": [30, 60, 90]
+            "enum": [
+              30,
+              60,
+              90
+            ]
           },
           "position": {
             "type": "integer"
