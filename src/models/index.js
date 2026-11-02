@@ -6,6 +6,13 @@ import CV from "./cv.model.js";
 import CVAnalysis from "./cv.analysis.model.js";
 import Matching from "./matching.model.js";
 import Opportunity from "./opportunity.model.js";
+import Course from "./course.model.js";
+import CourseModule from "./course-module.model.js";
+import Lesson from "./lesson.model.js";
+import Enrollment from "./enrollment.model.js";
+import LessonProgress from "./lesson-progress.model.js";
+import Certification from "./certification.model.js";
+import UserCertification from "./user-certification.model.js";
 
 User.hasMany(Roadmap, { as: "roadmaps", foreignKey: "userId" });
 Roadmap.belongsTo(User, { as: "owner", foreignKey: "userId" });
@@ -86,7 +93,6 @@ Matching.belongsTo(User, {
   foreignKey: "userId",
   as: "user",
 });
-
 export {
   User,
   CV,
@@ -94,4 +100,11 @@ export {
   SkillGap,
   Matching,
   Opportunity,
+  Course,
+  CourseModule,
+  Lesson,
+  Enrollment,
+  LessonProgress,
+  Certification,
+  UserCertification,
 };
