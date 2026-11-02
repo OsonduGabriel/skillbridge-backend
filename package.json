@@ -3,11 +3,12 @@
   "version": "1.0.0",
   "description": "",
   "main": "app.js",
-  "scripts": {
-    "start": "node src/server.js",
-    "dev": "nodemon src/server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
+  "scripts":  {
+  "start": "node src/server.js",
+  "dev": "nodemon src/server.js",
+  "generate:openapi": "node scripts/generate-openapi.js",
+  "test": "echo \"Error: no test specified\" && exit 1"
+},
   "repository": {
     "type": "git",
     "url": "git+https://github.com/OsonduGabriel/skillbridge-backend.git"

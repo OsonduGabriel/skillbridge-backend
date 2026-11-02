@@ -6,10 +6,10 @@
     "description": "REST API for CV analysis, skill gap analysis, career matching, learning roadmaps, opportunities, and user progress tracking."
   },
   "servers": [
-      {
-    "url": "https://skillbridge-api.tb-skillbridge-backend.workers.dev",
-    "description": "Cloudflare Workers - Production"
-  },
+    {
+      "url": "https://skillbridge-api.tb-skillbridge-backend.workers.dev",
+      "description": "Cloudflare Workers - Production"
+    },
     {
       "url": "http://localhost:3000",
       "description": "Local development"
