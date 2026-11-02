@@ -7,7 +7,7 @@
 
 /**
  * @swagger
- * /api/auth/register:
+ * /api/v1/auth/register:
  *   post:
  *     tags:
  *       - Authentication
@@ -34,7 +34,7 @@
 
 /**
  * @swagger
- * /api/auth/login:
+ * /api/v1/auth/login:
  *   post:
  *     tags:
  *       - Authentication
@@ -61,7 +61,7 @@
 
 /**
  * @swagger
- * /api/auth/forgot-password:
+ * /api/v1/auth/forgot-password:
  *   post:
  *     tags:
  *       - Authentication
@@ -91,7 +91,7 @@
 
 /**
  * @swagger
- * /api/auth/verify-reset-code:
+ * /api/v1/auth/verify-reset-code:
  *   post:
  *     tags:
  *       - Authentication
@@ -118,7 +118,7 @@
 
 /**
  * @swagger
- * /api/auth/reset-password:
+ * /api/v1/auth/reset-password:
  *   post:
  *     tags:
  *       - Authentication
