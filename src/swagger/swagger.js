@@ -15,12 +15,12 @@ const options = {
 
     servers: [
   {
-    url: "https://skillbridge-backend-78ix.onrender.com",
-    description: "Deployed API on Render",
+    url: "https://skillbridge-api.tb-skillbridge-backend.workers.dev",
+    description: "Cloudflare Workers - Production",
   },
   {
     url: "http://localhost:3000",
-    description: "Local development",
+    description: "Local Development",
   },
 ],
 

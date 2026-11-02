@@ -7,6 +7,10 @@
   },
   "servers": [
     {
+      "url": "https://skillbridge-backend-78ix.onrender.com",
+      "description": "Deployed API on Render"
+    },
+    {
       "url": "http://localhost:3000",
       "description": "Local development"
     }
@@ -4962,7 +4966,7 @@
         }
       }
     },
-    "/api/auth/register": {
+    "/api/v1/auth/register": {
       "post": {
         "tags": [
           "Authentication"
@@ -4999,7 +5003,7 @@
         }
       }
     },
-    "/api/auth/login": {
+    "/api/v1/auth/login": {
       "post": {
         "tags": [
           "Authentication"
@@ -5036,7 +5040,7 @@
         }
       }
     },
-    "/api/auth/forgot-password": {
+    "/api/v1/auth/forgot-password": {
       "post": {
         "tags": [
           "Authentication"
@@ -5073,7 +5077,7 @@
         }
       }
     },
-    "/api/auth/verify-reset-code": {
+    "/api/v1/auth/verify-reset-code": {
       "post": {
         "tags": [
           "Authentication"
@@ -5110,7 +5114,7 @@
         }
       }
     },
-    "/api/auth/reset-password": {
+    "/api/v1/auth/reset-password": {
       "post": {
         "tags": [
           "Authentication"
