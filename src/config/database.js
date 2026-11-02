@@ -1,6 +1,7 @@
 
 import "dotenv/config";
 import { Sequelize } from "sequelize";
+import pg from "pg";
 
 const isProduction = process.env.NODE_ENV === "production";
 const databaseUrl = process.env.DATABASE_URL;
@@ -11,14 +12,15 @@ if (databaseUrl) {
   // Railway or another hosted PostgreSQL database.
   sequelize = new Sequelize(databaseUrl, {
     dialect: "postgres",
+    dialectModule: pg,
     logging: false,
     dialectOptions: isProduction
       ? {
-          ssl: {
-            require: true,
-            rejectUnauthorized: false,
-          },
-        }
+        ssl: {
+          require: true,
+          rejectUnauthorized: false,
+        },
+      }
       : {},
     pool: {
       max: 5,
@@ -55,6 +57,7 @@ if (databaseUrl) {
       host: process.env.DB_HOST,
       port: Number(process.env.DB_PORT),
       dialect: "postgres",
+      dialectModule: pg,
       logging: false,
       pool: {
         max: 5,

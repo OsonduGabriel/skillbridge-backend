@@ -1,19 +1,15 @@
 
-import "dotenv/config";
-
 import express from "express";
 import cors from "cors";
 import swaggerUi from "swagger-ui-express";
 import swaggerSpec from "./swagger/swagger.js";
 import { errorHandler } from "./middleware/error.middleware.js";
-import sequelize from "./config/database.js";
 import "./models/index.js";
 import "./models/associations.model.js";
 import Routes from "./routes/index.js";
 
 const app = express();
 
-// Parse incoming JSON requests.
 app.use(express.json());
 
 //cors
@@ -35,14 +31,47 @@ app.get("/", (req, res) => {
 });
 
 // Swagger documentation.
-app.use(  "/api-docs",  swaggerUi.serve,  swaggerUi.setup(swaggerSpec));
+if (process.env.CLOUDFLARE_WORKER === "true") {
+  // Cloudflare-compatible Swagger UI using the CDN.
+  app.get("/api-docs", (req, res) => {
+    res.type("html").send(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>SkillBridge API Documentation</title>
+          <link rel="stylesheet"
+            href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css">
+        </head>
+        <body>
+          <div id="swagger-ui"></div>
+          <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+          <script>
+            SwaggerUIBundle({
+              url: "/api-docs.json",
+              dom_id: "#swagger-ui"
+            });
+          </script>
+        </body>
+      </html>
+    `);
+  });
+} else {
+  // Keep the existing Swagger UI implementation on Render.
+  const { default: swaggerUi } = await import("swagger-ui-express");
 
-// Expose the OpenAPI specification as a JSON file.
+  app.use(
+    "/api-docs",
+    swaggerUi.serve,
+    swaggerUi.setup(swaggerSpec)
+  );
+}
+
+// Expose the OpenAPI specification as JSON.
 app.get("/api-docs.json", (req, res) => {
   res.status(200).json(swaggerSpec);
 });
 
-// Mount API routes.
+// Mount all existing API routes.
 app.use("/api/v1", Routes);
 
 // Handle unknown routes.
@@ -56,31 +85,4 @@ app.use((req, res) => {
 // Error handler must remain last.
 app.use(errorHandler);
 
-const PORT = process.env.PORT || 3000;
-
-async function startServer() {
-  try {
-    // Verify that PostgreSQL is reachable before starting the API.
-    await sequelize.authenticate();
-    console.log("Database connected successfully.");
-
-    if (process.env.DB_SYNC === "true") {
-      await sequelize.sync();
-      console.log("Database models synchronized.");
-    } else {
-      console.log("Automatic database synchronization is disabled.");
-    }
-
-    app.listen(PORT, "0.0.0.0", () => {
-      console.log(`SkillBridge API listening on port ${PORT}`);
-    });
-  } catch (error) {
-    console.error("Failed to start SkillBridge API.");
-    console.error(error);
-
-    // Exit with a failure status so deployment platforms can detect it.
-    process.exit(1);
-  }
-}
-
-startServer();
+export default app;

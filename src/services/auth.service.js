@@ -8,7 +8,7 @@ const VERIFICATION_CODE_EXPIRY_MINUTES = 10;
 const MAX_VERIFICATION_ATTEMPTS = 5;
 
 const hashCode = (code) =>
-  crypto.createHash("sha256").update(code).digest("hex");  
+  crypto.createHash("sha256").update(code).digest("hex");
 
 export const generateToken = (user) => {
   return jwt.sign(
@@ -31,7 +31,11 @@ export const registerUser = async ({ fullName, email, password }) => {
   });
 
   if (existingUser) {
-    throw new Error("User with this email already exists");
+    const error = new Error(
+      "Email already exists. Please log in or use another email address."
+    );
+    error.statusCode = 409;
+    throw error;
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
@@ -70,8 +74,10 @@ export const registerUser = async ({ fullName, email, password }) => {
   };
 };
 
+
 export const verifyEmailService = async (email, code) => {
   const normalizedEmail = email.trim().toLowerCase();
+  const normalizedCode = String(code).trim();
 
   const user = await User.findOne({
     where: { email: normalizedEmail },
@@ -83,7 +89,7 @@ export const verifyEmailService = async (email, code) => {
 
   if (
     !user.emailVerificationExpiresAt ||
-    user.emailVerificationExpiresAt.getTime() <= Date.now()
+    new Date(user.emailVerificationExpiresAt).getTime() <= Date.now()
   ) {
     throw new Error("Invalid or expired verification code");
   }
@@ -94,7 +100,7 @@ export const verifyEmailService = async (email, code) => {
 
   user.emailVerificationAttempts += 1;
 
-  if (hashCode(code) !== user.emailVerificationCodeHash) {
+  if (hashCode(normalizedCode) !== user.emailVerificationCodeHash) {
     await user.save();
     throw new Error("Invalid or expired verification code");
   }
@@ -106,8 +112,11 @@ export const verifyEmailService = async (email, code) => {
 
   await user.save();
 
-  return { message: "Email verified successfully. You can now log in." };
+  return {
+    message: "Email verified successfully. You can now log in.",
+  };
 };
+
 
 export const loginUser = async ({ email, password }) => {
   const normalizedEmail = email.trim().toLowerCase();
@@ -130,9 +139,15 @@ export const loginUser = async ({ email, password }) => {
   if (!isPasswordValid) {
     throw new Error("Invalid email or password");
   }
-if (!user.isVerified) {
-  throw new Error("Please verify your email before logging in");
-}
+  if (user.isVerified !== true) {
+    console.log("LOGIN VERIFICATION DEBUG:", {
+      email: user.email,
+      isVerified: user.isVerified,
+      dataValues: user.dataValues?.isVerified,
+    });
+
+    throw new Error("Please verify your email before logging in");
+  }
   // Generate JWT
   const token = generateToken(user);
 

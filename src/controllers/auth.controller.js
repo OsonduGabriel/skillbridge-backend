@@ -1,4 +1,4 @@
-import {registerUser,loginUser,forgotPasswordService,verifyResetCodeService,resetPasswordService,verifyEmailService,} from "../services/auth.service.js";
+import { registerUser, loginUser, forgotPasswordService, verifyResetCodeService, resetPasswordService, verifyEmailService, } from "../services/auth.service.js";
 
 export const register = async (req, res, next) => {
   try {
@@ -26,6 +26,13 @@ export const register = async (req, res, next) => {
       data: { user },
     });
   } catch (error) {
+    if (error.statusCode === 409) {
+      return res.status(409).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
     next(error);
   }
 };
