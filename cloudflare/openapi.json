@@ -6,6 +6,10 @@
     "description": "REST API for CV analysis, skill gap analysis, career matching, learning roadmaps, opportunities, and user progress tracking."
   },
   "servers": [
+      {
+    "url": "https://skillbridge-api.tb-skillbridge-backend.workers.dev",
+    "description": "Cloudflare Workers - Production"
+  },
     {
       "url": "http://localhost:3000",
       "description": "Local development"
@@ -4974,7 +4978,7 @@
         }
       }
     },
-    "/api/auth/register": {
+    "/api/v1/auth/register": {
       "post": {
         "tags": [
           "Authentication"
@@ -5011,7 +5015,7 @@
         }
       }
     },
-    "/api/auth/login": {
+    "/api/v1/auth/login": {
       "post": {
         "tags": [
           "Authentication"
@@ -5048,7 +5052,7 @@
         }
       }
     },
-    "/api/auth/forgot-password": {
+    "/api/v1/auth/forgot-password": {
       "post": {
         "tags": [
           "Authentication"
@@ -5085,7 +5089,7 @@
         }
       }
     },
-    "/api/auth/verify-reset-code": {
+    "/api/v1/auth/verify-reset-code": {
       "post": {
         "tags": [
           "Authentication"
@@ -5122,7 +5126,7 @@
         }
       }
     },
-    "/api/auth/reset-password": {
+    "/api/v1/auth/reset-password": {
       "post": {
         "tags": [
           "Authentication"
