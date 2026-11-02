@@ -16,15 +16,15 @@ const options = {
     },
 
     servers: [
-        {
-        url: "https://skillbridge-api.tb-skillbridge-backend.workers.dev",
-        description: "Cloudflare Workers - Production",
-      },
-      {
-        url: "http://localhost:3000",
-        description: "Local development",
-      },
-    ],
+  {
+    url: "https://skillbridge-api.tb-skillbridge-backend.workers.dev",
+    description: "Cloudflare Workers - Production",
+  },
+  {
+    url: "http://localhost:3000",
+    description: "Local Development",
+  },
+],
 
     components: {
       securitySchemes: {

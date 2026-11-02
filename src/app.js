@@ -1,5 +1,7 @@
 
 import express from "express";
+import cors from "cors";
+import swaggerUi from "swagger-ui-express";
 import swaggerSpec from "./swagger/swagger.js";
 import { errorHandler } from "./middleware/error.middleware.js";
 import "./models/index.js";
@@ -9,6 +11,14 @@ import Routes from "./routes/index.js";
 const app = express();
 
 app.use(express.json());
+
+//cors
+app.use(cors({
+  origin: [
+    "http://localhost:3000",
+    "https://skillbridge-weld.vercel.app"
+  ],
+}));
 
 // API health check.
 app.get("/", (req, res) => {
