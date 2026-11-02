@@ -9,10 +9,10 @@ const options = {
     openapi: "3.0.3",
 
     info: {
-      title: "SkillBridge API",
+      title: "SkillBridge Backend API",
       version: "1.0.0",
       description:
-        "REST API for CV analysis, skill gap analysis, career matching, learning roadmaps, opportunities, and user progress tracking.",
+        "REST API for CV analysis, skill gap analysis, career matching, learning roadmaps, opportunities, and user progress tracking..",
     },
 
     servers: [
