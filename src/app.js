@@ -30,7 +30,7 @@ app.get("/", (req, res) => {
     success: true,
     message: "SkillBridge API",
     version: "1.0.0",
-    status: "Running",
+    status: "Running.",
   });
 });
 
