@@ -18,7 +18,10 @@ export const getCertifications = async (req, res) => {
                         "difficulty",
                         "estimatedHours",
                     ],
-                    where: { isPublished: true },
+                    where: {
+                        isPublished: true,
+                        providerType: "internal",
+                    },
                 },
             ],
             order: [["createdAt", "DESC"]],
@@ -40,18 +43,47 @@ export const getCertifications = async (req, res) => {
 };
 
 // POST /api/v1/certifications/issue
+
 export const issueCertificate = async (req, res) => {
     try {
         const userId = req.user.id;
         const { courseId } = req.body;
 
-        if (!courseId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(courseId)) {
+        // Validate course ID
+        if (
+            !courseId ||
+            !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(courseId)
+        ) {
             return res.status(400).json({
                 success: false,
                 message: "A valid course ID is required.",
             });
         }
 
+        // Find published course
+        const course = await Course.findOne({
+            where: {
+                id: courseId,
+                isPublished: true,
+            },
+        });
+
+        if (!course) {
+            return res.status(404).json({
+                success: false,
+                message: "Course not found or not available.",
+            });
+        }
+
+        // Only internal courses qualify for SkillBridge certificates
+        if (course.providerType !== "internal") {
+            return res.status(403).json({
+                success: false,
+                message: "SkillBridge certificates are only available for internal courses.",
+            });
+        }
+
+        // Check user enrollment
         const enrollment = await Enrollment.findOne({
             where: { userId, courseId },
         });
@@ -63,6 +95,7 @@ export const issueCertificate = async (req, res) => {
             });
         }
 
+        // Find active certification
         const certification = await Certification.findOne({
             where: {
                 courseId,
@@ -85,6 +118,7 @@ export const issueCertificate = async (req, res) => {
             });
         }
 
+        // Check required learning progress
         if (
             enrollment.progressPercentage <
             certification.completionRequired
@@ -99,6 +133,7 @@ export const issueCertificate = async (req, res) => {
             });
         }
 
+        // Prevent duplicate certificates
         const existingCertificate = await UserCertification.findOne({
             where: { enrollmentId: enrollment.id },
         });
@@ -111,6 +146,7 @@ export const issueCertificate = async (req, res) => {
             });
         }
 
+        // Generate unique certificate code
         const certificateCode = `SB-${crypto.randomUUID()
             .replace(/-/g, "")
             .toUpperCase()}`;
@@ -127,6 +163,7 @@ export const issueCertificate = async (req, res) => {
             message: "Certificate issued successfully.",
             data: certificate,
         });
+
     } catch (error) {
         console.error("Issue certificate error:", error);
 
@@ -143,6 +180,7 @@ export const issueCertificate = async (req, res) => {
         });
     }
 };
+
 
 // GET /api/v1/certifications/my-certificates
 export const getMyCertificates = async (req, res) => {

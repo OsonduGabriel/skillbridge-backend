@@ -183,6 +183,7 @@ export const getMyCourses = async (req, res) => {
                         "providerType",
                         "providerName",
                         "thumbnailUrl",
+                        "externalUrl",
                         "estimatedHours",
                     ],
                 },
@@ -239,7 +240,12 @@ export const completeLesson = async (req, res) => {
                 message: "Lesson not found.",
             });
         }
-
+        if (lesson.module.course.providerType !== "internal") {
+            return res.status(403).json({
+                success: false,
+                message: "Lesson completion tracking is only available for internal courses.",
+            });
+        }
         const enrollment = await Enrollment.findOne({
             where: {
                 userId,
