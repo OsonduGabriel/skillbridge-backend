@@ -34,6 +34,38 @@
 
 /**
  * @swagger
+ * /api/v1/auth/verify-email:
+ *   post:
+ *     tags:
+ *       - Authentication
+ *     summary: Verify a user's email address
+ *     description: >
+ *       Verifies a newly registered user's email address using the
+ *       six-digit verification code sent to their email.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/VerifyEmailRequest'
+ *           example:
+ *             email: student@example.com
+ *             code: "123456"
+ *     responses:
+ *       200:
+ *         description: Email verified successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AuthMessageResponse'
+ *       400:
+ *         description: Email or verification code is missing, or the code is not six digits.
+ *       500:
+ *         description: Email verification failed.
+ */
+
+/**
+ * @swagger
  * /api/v1/auth/login:
  *   post:
  *     tags:

@@ -22,6 +22,25 @@ const authSchema = {
     additionalProperties: false,
   },
 
+  VerifyEmailRequest: {
+  type: "object",
+  required: ["email", "code"],
+  properties: {
+    email: {
+      type: "string",
+      format: "email",
+      example: "gabriel@example.com",
+    },
+    code: {
+      type: "string",
+      pattern: "^\\d{6}$",
+      example: "123456",
+      description: "Six-digit email verification code.",
+    },
+  },
+  additionalProperties: false,
+},
+
   LoginRequest: {
     type: "object",
     required: ["email", "password"],
