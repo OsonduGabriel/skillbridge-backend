@@ -178,10 +178,40 @@
  *       500:
  *         description: Password reset failed.
  */
-
+/**
+ * @swagger
+ * /api/v1/auth/verify-email:
+ *   post:
+ *     summary: Verify user email address
+ *     description: Verifies a user's email using the six-digit verification code sent during registration.
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - code
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: user@example.com
+ *               code:
+ *                 type: string
+ *                 pattern: '^\\d{6}$'
+ *                 example: "123456"
+ *     responses:
+ *       200:
+ *         description: Email verification successful
+ *       400:
+ *         description: Missing or invalid email verification details
+ */
 
 import express from "express";
-import {register,login,forgotPassword,verifyResetCode,resetPassword,verifyEmail,} from "../controllers/auth.controller.js";
+import { register, login, forgotPassword, verifyResetCode, resetPassword, verifyEmail, } from "../controllers/auth.controller.js";
 
 const router = express.Router();
 
