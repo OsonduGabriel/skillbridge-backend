@@ -1,28 +1,24 @@
 import multer from "multer";
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "uploads/cvs");
-  },
-
-  filename: (req, file, cb) => {
-    const uniqueName = `${Date.now()}-${file.originalname}`;
-    cb(null, uniqueName);
-  },
-});
+// Store uploaded files in memory instead of local disk.
+// The controller will transfer the buffer to Cloudflare R2.
+const storage = multer.memoryStorage();
 
 const fileFilter = (req, file, cb) => {
   const allowedTypes = [
     "application/pdf",
     "application/msword",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    "text/plain"
+    "text/plain",
   ];
 
   if (allowedTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error("Only PDF, DOC, DOCX, and TEXT files are allowed."), false);
+    cb(
+      new Error("Only PDF, DOC, DOCX, and TEXT files are allowed."),
+      false
+    );
   }
 };
 

@@ -507,5 +507,4 @@ export {
   analyzeCVWithAI,
   reviewCVWithAI,
   generateRoadmapWithAI,
-  runJobMatchingFromDatabase,
 };

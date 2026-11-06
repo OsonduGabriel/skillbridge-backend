@@ -313,14 +313,14 @@ export const generateAIMatches = async (userId) => {
 
     const matchedSkills = Array.isArray(aiMatch.matching_skills)
       ? aiMatch.matching_skills.filter(
-          (skill) => typeof skill === "string"
-        )
+        (skill) => typeof skill === "string"
+      )
       : [];
 
     const missingSkills = Array.isArray(aiMatch.missing_skills)
       ? aiMatch.missing_skills.filter(
-          (skill) => typeof skill === "string"
-        )
+        (skill) => typeof skill === "string"
+      )
       : [];
 
     // 7. Save or update the user's match
@@ -381,5 +381,4 @@ export {
   calculateMatch,
   generateCareerMatches,
   getUserCareerMatches,
-  generateAIMatches,
 };

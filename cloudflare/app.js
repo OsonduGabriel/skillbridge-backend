@@ -1,6 +1,7 @@
 
 import { createServer } from "node:http";
 import { httpServerHandler } from "cloudflare:node";
+import { runWithCloudflareContext } from "../src/utils/cloudflare-context.js";
 
 let handlerPromise;
 
@@ -55,5 +56,7 @@ async function getExpressHandler(env) {
 export async function handleExpressRequest(request, env) {
     const handler = await getExpressHandler(env);
 
-    return handler.fetch(request, env);
+    return runWithCloudflareContext(env, () =>
+        handler.fetch(request, env)
+    );
 }

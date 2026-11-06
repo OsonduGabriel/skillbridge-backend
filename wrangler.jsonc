@@ -11,5 +11,11 @@
 			"binding": "HYPERDRIVE",
 			"id": "d1e926b8c3904ffa8c444d2dd93d13b0"
 		}
+	],
+	"r2_buckets": [
+		{
+			"binding": "CV_BUCKET",
+			"bucket_name": "skillbridge-cvs"
+		}
 	]
 }

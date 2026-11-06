@@ -1,16 +1,7 @@
+import { createCV, getUserCVs, deleteCV, updateCV as updateCVService, getCVFile, } from "../services/cv.service.js";
+import { getCVFromR2, } from "../services/cv-storage.service.js";
 
-import {
-  createCV,
-  getUserCVs,
-  deleteCV,
-  updateCV as updateCVService,
-  getCVFile,
-} from "../services/cv.service.js";
-
-/**
- * Remove internal storage details before returning a CV to the client.
- * This does not modify the Sequelize instance or database record.
- */
+// Remove internal storage details before returning CV records.
 const serializeCV = (cv) => {
   if (!cv) {
     return null;
@@ -41,12 +32,12 @@ const uploadCV = async (req, res, next) => {
     const cvData = {
       userId,
       fileName: file.originalname,
-      filePath: file.path,
       fileType: file.mimetype,
       fileSize: file.size,
     };
 
-    const cv = await createCV(cvData);
+    // The service uploads the buffer to R2 and saves metadata.
+    const cv = await createCV(cvData, file);
 
     return res.status(201).json({
       success: true,
@@ -61,9 +52,7 @@ const uploadCV = async (req, res, next) => {
 // Retrieve all CVs belonging to the authenticated user.
 const getMyCVs = async (req, res, next) => {
   try {
-    const userId = req.user.id;
-
-    const cvs = await getUserCVs(userId);
+    const cvs = await getUserCVs(req.user.id);
 
     return res.status(200).json({
       success: true,
@@ -75,13 +64,12 @@ const getMyCVs = async (req, res, next) => {
   }
 };
 
-// Delete a CV belonging to the authenticated user.
+// Delete a CV.
 const removeCV = async (req, res, next) => {
   try {
     const { cvId } = req.params;
-    const userId = req.user.id;
 
-    const cv = await deleteCV(cvId, userId);
+    const cv = await deleteCV(cvId, req.user.id);
 
     if (!cv) {
       return res.status(404).json({
@@ -99,11 +87,10 @@ const removeCV = async (req, res, next) => {
   }
 };
 
-// Replace an existing CV with a newly uploaded file.
+// Replace an existing CV.
 const updateCV = async (req, res, next) => {
   try {
     const { cvId } = req.params;
-    const userId = req.user.id;
 
     if (!req.file) {
       return res.status(400).json({
@@ -112,7 +99,11 @@ const updateCV = async (req, res, next) => {
       });
     }
 
-    const cv = await updateCVService(cvId, userId, req.file);
+    const cv = await updateCVService(
+      cvId,
+      req.user.id,
+      req.file
+    );
 
     if (!cv) {
       return res.status(404).json({
@@ -131,13 +122,12 @@ const updateCV = async (req, res, next) => {
   }
 };
 
-// Download a CV without exposing its storage path in a JSON response.
+// Download a CV from private R2 storage.
 const downloadCV = async (req, res, next) => {
   try {
     const { cvId } = req.params;
-    const userId = req.user.id;
 
-    const cv = await getCVFile(cvId, userId);
+    const cv = await getCVFile(cvId, req.user.id);
 
     if (!cv) {
       return res.status(404).json({
@@ -146,11 +136,27 @@ const downloadCV = async (req, res, next) => {
       });
     }
 
-    return res.download(cv.filePath, cv.fileName, (error) => {
-      if (error) {
-        next(error);
-      }
-    });
+    const object = await getCVFromR2(cv.filePath);
+
+    if (!object) {
+      return res.status(404).json({
+        success: false,
+        message: "CV file not found in storage. Please upload it again.",
+      });
+    }
+
+    const buffer = Buffer.from(await object.arrayBuffer());
+
+    res.attachment(cv.fileName);
+
+    res.setHeader(
+      "Content-Type",
+      cv.fileType || "application/octet-stream"
+    );
+
+    res.setHeader("Content-Length", String(buffer.length));
+
+    return res.send(buffer);
   } catch (error) {
     next(error);
   }
