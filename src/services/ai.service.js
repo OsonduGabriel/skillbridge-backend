@@ -1,10 +1,17 @@
 
 import { GoogleGenAI } from "@google/genai";
 
+// =====================================================
+// 1. GEMINI CONFIGURATION
+// =====================================================
+
 // Initialize Gemini using the API key from the environment.
 const getAIClient = () => {
   if (!process.env.GEMINI_API_KEY) {
-    const error = new Error("GEMINI_API_KEY is not configured.");
+    const error = new Error(
+      "GEMINI_API_KEY is not configured."
+    );
+
     error.statusCode = 500;
     throw error;
   }
@@ -21,13 +28,22 @@ const createError = (message, statusCode) => {
   return error;
 };
 
-// Generate a JSON response from Gemini.
-const generateJSONWithAI = async (systemPrompt, userPrompt) => {
+// =====================================================
+// 2. GENERATE JSON WITH GEMINI
+// =====================================================
+
+const generateJSONWithAI = async (
+  systemPrompt,
+  userPrompt
+) => {
   const ai = getAIClient();
 
+  let response;
+
   try {
-    const response = await ai.models.generateContent({
+    response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
+
       contents: [
         {
           role: "user",
@@ -38,39 +54,73 @@ const generateJSONWithAI = async (systemPrompt, userPrompt) => {
           ],
         },
       ],
+
       config: {
         responseMimeType: "application/json",
       },
     });
-
-    if (!response.text) {
-      throw new Error("Gemini returned an empty response.");
-    }
-
-    return JSON.parse(response.text);
   } catch (error) {
-    console.error("Gemini request failed:", error.message);
+    // Log useful debugging information without exposing
+    // the API key or the CV contents.
+    console.error("Gemini API request failed:", {
+      name: error.name,
+      message: error.message,
+      status: error.status,
+    });
 
-    // Preserve errors that already have an HTTP status code.
+    // Preserve errors that already have an HTTP status.
     if (error.statusCode) {
       throw error;
     }
 
-    // Do not expose provider errors or internal details to clients.
     throw createError(
       "AI request failed. Please try again later.",
       502
     );
   }
+
+  // Check whether Gemini returned a response.
+  if (
+    !response ||
+    typeof response.text !== "string" ||
+    !response.text.trim()
+  ) {
+    console.error("Gemini returned an empty response.");
+
+    throw createError(
+      "AI returned an empty response. Please try again.",
+      502
+    );
+  }
+
+  // Parse the JSON response separately so that JSON errors
+  // can be distinguished from Gemini API request errors.
+  try {
+    return JSON.parse(response.text);
+  } catch (error) {
+    console.error("Gemini returned invalid JSON:", {
+      name: error.name,
+      message: error.message,
+    });
+
+    throw createError(
+      "AI returned an invalid response. Please try again.",
+      502
+    );
+  }
 };
 
-// Validate that an AI response contains an array of strings.
+// =====================================================
+// 3. COMMON VALIDATION HELPER
+// =====================================================
+
+// Validate that a value is an array containing strings.
 const isStringArray = (value) =>
   Array.isArray(value) &&
   value.every((item) => typeof item === "string");
 
 // =====================================================
-// 1. SKILL GAP ANALYSIS
+// 4. SKILL GAP ANALYSIS
 // =====================================================
 
 const analyzeCVWithAI = async (analysisData) => {
@@ -88,12 +138,24 @@ const analyzeCVWithAI = async (analysisData) => {
   const resumeText = sanitizedText || sanitizedResumeText;
   const role = targetJobTitle || targetRole;
 
-  if (!resumeText || !resumeText.trim()) {
-    throw createError("Sanitized CV text is required.", 400);
+  if (
+    typeof resumeText !== "string" ||
+    !resumeText.trim()
+  ) {
+    throw createError(
+      "Sanitized CV text is required.",
+      400
+    );
   }
 
-  if (!role || !role.trim()) {
-    throw createError("Target job title is required.", 400);
+  if (
+    typeof role !== "string" ||
+    !role.trim()
+  ) {
+    throw createError(
+      "Target job title is required.",
+      400
+    );
   }
 
   const systemPrompt = `
@@ -171,6 +233,10 @@ ${resumeText}
     !isStringArray(result.skill_gaps) ||
     !validCareerPath
   ) {
+    console.error(
+      "Gemini returned an invalid skill-gap response structure."
+    );
+
     throw createError(
       "AI returned an invalid skill-gap response.",
       502
@@ -184,7 +250,7 @@ ${resumeText}
 };
 
 // =====================================================
-// 2. CV REVIEW AND CAREER PATH ASSESSMENT
+// 5. CV REVIEW AND CAREER PATH ASSESSMENT
 // =====================================================
 
 const reviewCVWithAI = async ({
@@ -198,8 +264,14 @@ const reviewCVWithAI = async ({
   const resumeText = sanitizedText || sanitizedResumeText;
   const role = targetJobTitle || targetRole;
 
-  if (!resumeText || !resumeText.trim()) {
-    throw createError("Sanitized CV text is required.", 400);
+  if (
+    typeof resumeText !== "string" ||
+    !resumeText.trim()
+  ) {
+    throw createError(
+      "Sanitized CV text is required.",
+      400
+    );
   }
 
   const systemPrompt = `
@@ -281,9 +353,11 @@ ${resumeText}
         typeof path.match_percentage === "number" &&
         path.match_percentage >= 0 &&
         path.match_percentage <= 100 &&
-        ["High Match", "Medium Match", "Potential Pivot"].includes(
-          path.fit_level
-        ) &&
+        [
+          "High Match",
+          "Medium Match",
+          "Potential Pivot",
+        ].includes(path.fit_level) &&
         typeof path.rationale === "string" &&
         isStringArray(path.key_transferable_skills) &&
         isStringArray(path.primary_gaps) &&
@@ -293,6 +367,10 @@ ${resumeText}
     );
 
   if (!validProfile || !validCareerPaths) {
+    console.error(
+      "Gemini returned an invalid CV review response structure."
+    );
+
     throw createError(
       "AI returned an invalid CV review response.",
       502
@@ -303,7 +381,7 @@ ${resumeText}
 };
 
 // =====================================================
-// 3. CAREER ROADMAP GENERATION
+// 6. CAREER ROADMAP GENERATION
 // =====================================================
 
 const generateRoadmapWithAI = async ({
@@ -314,8 +392,14 @@ const generateRoadmapWithAI = async ({
   careerStage,
   primaryGoal,
 }) => {
-  if (!targetRole || !targetRole.trim()) {
-    throw createError("Target career role is required.", 400);
+  if (
+    typeof targetRole !== "string" ||
+    !targetRole.trim()
+  ) {
+    throw createError(
+      "Target career role is required.",
+      400
+    );
   }
 
   if (!isStringArray(currentSkills)) {
@@ -417,9 +501,11 @@ ${JSON.stringify(missingSkills)}
       (project) =>
         project &&
         typeof project.project_title === "string" &&
-        ["Beginner", "Intermediate", "Advanced"].includes(
-          project.difficulty_level
-        ) &&
+        [
+          "Beginner",
+          "Intermediate",
+          "Advanced",
+        ].includes(project.difficulty_level) &&
         typeof project.target_role_relevance === "string" &&
         isStringArray(project.skills_demonstrated) &&
         isStringArray(project.key_features) &&
@@ -428,6 +514,10 @@ ${JSON.stringify(missingSkills)}
     );
 
   if (!validRoadmap || !validProjects) {
+    console.error(
+      "Gemini returned an invalid career roadmap response structure."
+    );
+
     throw createError(
       "AI returned an invalid career roadmap response.",
       502
@@ -437,7 +527,10 @@ ${JSON.stringify(missingSkills)}
   return result;
 };
 
-// AI-powered job matching
+// =====================================================
+// 7. AI-POWERED JOB MATCHING
+// =====================================================
+
 export const runJobMatchingFromDatabase = async (
   candidateProfile,
   activeJobsFromDB
@@ -487,12 +580,19 @@ Match this candidate with the available opportunities.
 Return the results using the required JSON structure.
 `;
 
-  const result = await generateJSONWithAI(systemPrompt, userPrompt);
+  const result = await generateJSONWithAI(
+    systemPrompt,
+    userPrompt
+  );
 
   if (
     !result ||
     !Array.isArray(result.matched_jobs)
   ) {
+    console.error(
+      "Gemini returned an invalid job matching response structure."
+    );
+
     throw createError(
       "AI returned an invalid job matching response.",
       502
@@ -502,7 +602,10 @@ Return the results using the required JSON structure.
   return result;
 };
 
-// Export all three AI functions for use by other services.
+// =====================================================
+// 8. EXPORT AI FUNCTIONS
+// =====================================================
+
 export {
   analyzeCVWithAI,
   reviewCVWithAI,
