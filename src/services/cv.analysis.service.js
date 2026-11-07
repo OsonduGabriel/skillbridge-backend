@@ -49,7 +49,7 @@ const extractTextFromCV = async (fileBuffer, fileName, fileType) => {
 
       return extractedPages.join("\n");
     } finally {
-      await pdfDocument.destroy();
+      await loadingTask.destroy();
     }
   }
   // Extract text from DOCX.
