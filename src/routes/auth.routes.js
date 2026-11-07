@@ -50,7 +50,7 @@
  *             $ref: '#/components/schemas/VerifyEmailRequest'
  *           example:
  *             email: student@example.com
- *             code: "123456"
+ *             code: 123456
  *     responses:
  *       200:
  *         description: Email verified successfully.
