@@ -1,5 +1,6 @@
 
 import { GoogleGenAI } from "@google/genai";
+import { getCloudflareEnv } from "../utils/cloudflare-context.js";
 
 // =====================================================
 // 1. GEMINI CONFIGURATION
@@ -7,7 +8,11 @@ import { GoogleGenAI } from "@google/genai";
 
 // Initialize Gemini using the API key from the environment.
 const getAIClient = () => {
-  if (!process.env.GEMINI_API_KEY) {
+  const apiKey =
+    getCloudflareEnv()?.GEMINI_API_KEY ||
+    process.env.GEMINI_API_KEY;
+
+  if (!apiKey) {
     const error = new Error(
       "GEMINI_API_KEY is not configured."
     );
@@ -16,11 +21,8 @@ const getAIClient = () => {
     throw error;
   }
 
-  return new GoogleGenAI({
-    apiKey: process.env.GEMINI_API_KEY,
-  });
+  return new GoogleGenAI({ apiKey });
 };
-
 // Create an error with an HTTP status code.
 const createError = (message, statusCode) => {
   const error = new Error(message);
