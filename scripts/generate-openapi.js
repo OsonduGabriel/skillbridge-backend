@@ -13,7 +13,7 @@ const options = {
                 "REST API for CV analysis, skill gap analysis, career matching, learning roadmaps, opportunities, and user progress tracking.",
         },
         servers: [
-              {
+            {
                 url: "https://skillbridge-api.tb-skillbridge-backend.workers.dev",
                 description: "Cloudflare Workers - Production",
             },
@@ -32,18 +32,18 @@ const options = {
                 },
             },
             schemas,
-        },
-        parameters: {
-            CVId: {
-                name: "cvId",
-                in: "path",
-                required: true,
-                description: "UUID of the CV.",
-                schema: {
-                    type: "string",
-                    format: "uuid",
+            parameters: {
+                CVId: {
+                    name: "cvId",
+                    in: "path",
+                    required: true,
+                    description: "UUID of the CV.",
+                    schema: {
+                        type: "string",
+                        format: "uuid",
+                    },
+                    example: "550e8400-e29b-41d4-a716-446655440000",
                 },
-                example: "550e8400-e29b-41d4-a716-446655440000",
             },
         },
     },

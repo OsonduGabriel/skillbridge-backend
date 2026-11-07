@@ -3116,19 +3116,19 @@
           }
         }
       }
-    }
-  },
-  "parameters": {
-    "CVId": {
-      "name": "cvId",
-      "in": "path",
-      "required": true,
-      "description": "UUID of the CV.",
-      "schema": {
-        "type": "string",
-        "format": "uuid"
-      },
-      "example": "550e8400-e29b-41d4-a716-446655440000"
+    },
+    "parameters": {
+      "CVId": {
+        "name": "cvId",
+        "in": "path",
+        "required": true,
+        "description": "UUID of the CV.",
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "example": "550e8400-e29b-41d4-a716-446655440000"
+      }
     }
   },
   "paths": {
