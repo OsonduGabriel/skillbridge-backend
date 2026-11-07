@@ -22,22 +22,36 @@ import { analyzeCVWithAI } from "./ai.service.js";
 const extractTextFromCV = async (fileBuffer, fileName, fileType) => {
   const extension = path.extname(fileName).toLowerCase();
 
-  // Extract text from PDF.
+  // Extract text from PDF using the Cloudflare-compatible PDF.js bundle.
   if (fileType === "application/pdf" || extension === ".pdf") {
-    const { PDFParse } = await import("pdf-parse");
+    const { getDocument } = await import("pdfjs-serverless");
 
-    const parser = new PDFParse({
-      data: fileBuffer,
+    const loadingTask = getDocument({
+      data: new Uint8Array(fileBuffer),
+      useSystemFonts: true,
     });
 
+    const pdfDocument = await loadingTask.promise;
+    const extractedPages = [];
+
     try {
-      const pdfData = await parser.getText();
-      return pdfData.text;
+      for (let pageNumber = 1; pageNumber <= pdfDocument.numPages; pageNumber++) {
+        const page = await pdfDocument.getPage(pageNumber);
+        const textContent = await page.getTextContent();
+
+        const pageText = textContent.items
+          .filter((item) => "str" in item)
+          .map((item) => item.str)
+          .join(" ");
+
+        extractedPages.push(pageText);
+      }
+
+      return extractedPages.join("\n");
     } finally {
-      await parser.destroy();
+      await pdfDocument.destroy();
     }
   }
-
   // Extract text from DOCX.
   if (
     fileType ===
