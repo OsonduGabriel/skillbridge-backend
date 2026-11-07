@@ -437,6 +437,71 @@ ${JSON.stringify(missingSkills)}
   return result;
 };
 
+// AI-powered job matching
+export const runJobMatchingFromDatabase = async (
+  candidateProfile,
+  activeJobsFromDB
+) => {
+  const systemPrompt = `
+You are an intelligent career and job-matching assistant.
+
+Your task is to compare a candidate's profile with the available job opportunities.
+
+RULES:
+1. Only use the job opportunities provided.
+2. Do not invent job titles, company names, skills, or application links.
+3. Match the candidate's skills against the required skills of each opportunity.
+4. Consider the candidate's target role and seniority level.
+5. Calculate a realistic match percentage between 0 and 100.
+6. Identify matching skills and missing skills.
+7. Explain briefly why the candidate is a good fit.
+8. Return only valid JSON. Do not include markdown or additional text.
+
+Return this exact JSON structure:
+
+{
+  "total_matches_found": 0,
+  "matched_jobs": [
+    {
+      "job_id": "Opportunity ID from the database",
+      "job_title": "Job title from the database",
+      "company_name": "Company name from the database",
+      "match_percentage": 85,
+      "matching_skills": ["JavaScript", "Node.js"],
+      "missing_skills": ["Docker"],
+      "why_good_fit": "Explanation of why the candidate fits this opportunity.",
+      "apply_link": "Exact application URL from the database"
+    }
+  ]
+}
+`;
+
+  const userPrompt = `
+CANDIDATE PROFILE:
+${JSON.stringify(candidateProfile, null, 2)}
+
+AVAILABLE ACTIVE JOB OPPORTUNITIES:
+${JSON.stringify(activeJobsFromDB, null, 2)}
+
+Match this candidate with the available opportunities.
+Return the results using the required JSON structure.
+`;
+
+  const result = await generateJSONWithAI(systemPrompt, userPrompt);
+
+  if (
+    !result ||
+    !Array.isArray(result.matched_jobs)
+  ) {
+    throw createError(
+      "AI returned an invalid job matching response.",
+      502
+    );
+  }
+
+  return result;
+};
+
 // Export all three AI functions for use by other services.
 export {
   analyzeCVWithAI,

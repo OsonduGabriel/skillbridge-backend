@@ -1,26 +1,47 @@
-import fs from "fs/promises";
 import CV from "../models/cv.model.js";
 import CVAnalysis from "../models/cv.analysis.model.js";
+import { uploadCVToR2, deleteCVFromR2, } from "./cv-storage.service.js";
 
-//upload cv
-const createCV = async (cvData) => {
-  const cv = await CV.create(cvData);
-
-  return cv;
+// Delete an R2 object without hiding the original operation's result.
+const cleanupR2Object = async (fileKey, context) => {
+  try {
+    await deleteCVFromR2(fileKey);
+  } catch (error) {
+    console.error(context, {
+      fileKey,
+      message: error.message,
+    });
+  }
 };
 
-//users can view cv
+// Upload CV to R2 and save its metadata in PostgreSQL.
+const createCV = async (cvData, file) => {
+  const filePath = await uploadCVToR2(file, cvData.userId);
+
+  try {
+    return await CV.create({
+      ...cvData,
+      filePath,
+    });
+  } catch (error) {
+    await cleanupR2Object(
+      filePath,
+      "Failed to clean up CV after database creation failed."
+    );
+
+    throw error;
+  }
+};
+
+// Retrieve all CVs belonging to a user.
 const getUserCVs = async (userId) => {
-  const cvs = await CV.findAll({
-    where: {
-      userId,
-    },
+  return CV.findAll({
+    where: { userId },
     order: [["createdAt", "DESC"]],
   });
-
-  return cvs;
 };
 
+// Delete CV metadata and its R2 object.
 const deleteCV = async (cvId, userId) => {
   const cv = await CV.findOne({
     where: {
@@ -32,21 +53,22 @@ const deleteCV = async (cvId, userId) => {
   if (!cv) {
     return null;
   }
-//delete the physical uploaded cv file
-  try {
-    await fs.unlink(cv.filePath);
-  } catch (error) {
-    // Continue deleting the database record if the file is already missing.
-    if (error.code !== "ENOENT") {
-      throw error;
-    }
-  }
-//delete cv from database record
+
+  const filePath = cv.filePath;
+
+  // Delete the database record first.
   await cv.destroy();
+
+  // Clean up the corresponding R2 object.
+  await cleanupR2Object(
+    filePath,
+    "CV database record deleted, but R2 cleanup failed."
+  );
 
   return cv;
 };
 
+// Replace an existing CV.
 const updateCV = async (cvId, userId, file) => {
   const cv = await CV.findOne({
     where: {
@@ -61,41 +83,65 @@ const updateCV = async (cvId, userId, file) => {
 
   const oldFilePath = cv.filePath;
 
-  await cv.update({
-    fileName: file.originalname,
-    filePath: file.path,
-    fileType: file.mimetype,
-    fileSize: file.size,
-  });
+  // Upload the replacement before modifying the database.
+  const newFilePath = await uploadCVToR2(file, userId);
+
+  const transaction = await CV.sequelize.transaction();
 
   try {
-    await fs.unlink(oldFilePath);
+    await cv.update(
+      {
+        fileName: file.originalname,
+        filePath: newFilePath,
+        fileType: file.mimetype,
+        fileSize: file.size,
+      },
+      { transaction }
+    );
+
+    // Remove analyses associated with the previous CV.
+    await CVAnalysis.destroy({
+      where: { cvId },
+      transaction,
+    });
+
+    await transaction.commit();
   } catch (error) {
-    if (error.code !== "ENOENT") {
-      throw error;
-    }
+    await transaction.rollback().catch((rollbackError) => {
+      console.error("CV database rollback failed:", rollbackError);
+    });
+
+    await cleanupR2Object(
+      newFilePath,
+      "Failed to clean up replacement CV."
+    );
+
+    throw error;
   }
 
-  // Remove previous analysis because the CV content has changed.
-  await CVAnalysis.destroy({
-    where: {
-      cvId,
-    },
-  });
+  // Delete the previous R2 object after successful database update.
+  await cleanupR2Object(
+    oldFilePath,
+    "CV replaced, but previous R2 object cleanup failed."
+  );
 
   return cv;
 };
 
-//download cv
+// Retrieve a CV database record.
 const getCVFile = async (cvId, userId) => {
-  const cv = await CV.findOne({
+  return CV.findOne({
     where: {
       id: cvId,
       userId,
     },
   });
-
-  return cv;
 };
 
-export { createCV, getUserCVs, deleteCV, updateCV, getCVFile };
+export {
+  createCV,
+  getUserCVs,
+  deleteCV,
+  updateCV,
+  getCVFile,
+};

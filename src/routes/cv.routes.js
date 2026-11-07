@@ -66,7 +66,14 @@
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - $ref: '#/components/parameters/CVId'
+ *       - in: path
+ *         name: cvId
+ *         required: true
+ *         description: The UUID of the CV returned when the user uploads a CV.
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         example: 5ead9e08-6141-48c8-b854-96536c8afd2e
  *     requestBody:
  *       required: true
  *       content:

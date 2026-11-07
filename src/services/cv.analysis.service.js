@@ -3,11 +3,9 @@
  * Extract text from CVs, sanitize personal information,
  * and save CV analysis results in the database.
  */
-
-import fs from "fs/promises";
 import path from "path";
 import mammoth from "mammoth";
-
+import { getCVFromR2 } from "./cv-storage.service.js";
 import CVAnalysis from "../models/cv.analysis.model.js";
 import sanitizePII from "../utils/pii.sanitizer.js";
 
@@ -20,15 +18,13 @@ import {
 import { analyzeCVWithAI } from "./ai.service.js";
 
 // Extract text from an uploaded CV.
-const extractTextFromCV = async (filePath, fileType) => {
-  const extension = path.extname(filePath).toLowerCase();
 
-  // Extract text from PDF files using pdf-parse v2.
+const extractTextFromCV = async (fileBuffer, fileName, fileType) => {
+  const extension = path.extname(fileName).toLowerCase();
+
+  // Extract text from PDF.
   if (fileType === "application/pdf" || extension === ".pdf") {
-    // Load the PDF parser only when PDF extraction is requested.
     const { PDFParse } = await import("pdf-parse");
-
-    const fileBuffer = await fs.readFile(filePath);
 
     const parser = new PDFParse({
       data: fileBuffer,
@@ -36,41 +32,40 @@ const extractTextFromCV = async (filePath, fileType) => {
 
     try {
       const pdfData = await parser.getText();
-
       return pdfData.text;
     } finally {
-      // Release resources used by the PDF parser.
       await parser.destroy();
     }
   }
 
-  // Extract text from Word DOCX files.
+  // Extract text from DOCX.
   if (
     fileType ===
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
     extension === ".docx"
   ) {
     const result = await mammoth.extractRawText({
-      path: filePath,
+      buffer: fileBuffer,
     });
 
     return result.value;
   }
 
-  // DOC files are accepted for upload, but extraction is not supported yet.
+  // DOC extraction is not currently supported.
   if (fileType === "application/msword" || extension === ".doc") {
     throw new Error(
-      "DOC files are currently accepted for upload, but text extraction is not supported yet."
+      "DOC files are accepted for upload, but text extraction is not supported yet."
     );
   }
 
-  // Extract text from plain text files.
+  // Extract plain text.
   if (fileType === "text/plain" || extension === ".txt") {
-    return await fs.readFile(filePath, "utf-8");
+    return fileBuffer.toString("utf-8");
   }
 
   throw new Error("Unsupported CV file type.");
 };
+
 
 // Remove personally identifiable information from extracted CV text.
 const sanitizeCVText = (extractedText) => {
@@ -153,9 +148,24 @@ const processCVAnalysis = async ({
     throw error;
   }
 
-  // Step 1: Extract text from the uploaded CV.
+  // Retrieve the uploaded CV from Cloudflare R2.
+  const cvObject = await getCVFromR2(cv.filePath);
+
+  if (!cvObject) {
+    const error = new Error("CV file not found in R2 storage.");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  // Convert the R2 object into a Node.js Buffer.
+  const fileBuffer = Buffer.from(
+    await cvObject.arrayBuffer()
+  );
+
+  // Extract the CV text.
   const extractedText = await extractTextFromCV(
-    cv.filePath,
+    fileBuffer,
+    cv.fileName,
     cv.fileType
   );
 

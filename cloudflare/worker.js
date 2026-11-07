@@ -1,136 +1,185 @@
-
 import { Client } from "pg";
 import { Sequelize } from "sequelize";
 import pg from "pg";
 import { handleExpressRequest } from "./app.js";
 
+// ==========================================
+// 1. CORS CONFIGURATION
+// ==========================================
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods":
+    "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+  "Access-Control-Allow-Headers":
+    "Content-Type, Authorization, Accept, X-Requested-With",
+  "Access-Control-Max-Age": "86400",
+};
+
+// Attach CORS headers to every response
+function withCors(response) {
+  const headers = new Headers(response.headers);
+
+  Object.entries(corsHeaders).forEach(([key, value]) => {
+    headers.set(key, value);
+  });
+
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
+// ==========================================
+// 2. CLOUDFLARE WORKER
+// ==========================================
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
-    // 1. Worker health check
-    if (url.pathname === "/health") {
-      return Response.json({
-        success: true,
-        message: "SkillBridge Cloudflare Worker",
-        status: "Running",
-      });
-    }
+    try {
+      // ======================================
+      // 3. HANDLE CORS PREFLIGHT
+      // ======================================
 
-    // 2. PostgreSQL connection test using pg
-    if (url.pathname === "/db-test") {
-      const client = new Client({
-        connectionString: env.HYPERDRIVE.connectionString,
-        connectionTimeoutMillis: 10000,
-        query_timeout: 10000,
-      });
-
-      let connected = false;
-
-      try {
-        console.log("Attempting Supabase connection...");
-
-        await client.connect();
-        connected = true;
-
-        console.log("Supabase connection established.");
-
-        const result = await client.query(
-          `SELECT
-            current_database() AS database,
-            current_user AS username,
-            NOW() AS server_time`
-        );
-
-        return Response.json({
-          success: true,
-          message: "Supabase PostgreSQL connection successful",
-          data: result.rows[0],
+      // OPTIONS must be handled before Express
+      // authentication or other middleware.
+      if (request.method === "OPTIONS") {
+        return new Response(null, {
+          status: 204,
+          headers: corsHeaders,
         });
-      } catch (error) {
-        console.error("Database connection test failed:", error);
-
-        return Response.json(
-          {
-            success: false,
-            message: "Database connection failed.",
-            error: error.message,
-          },
-          { status: 500 }
-        );
-      } finally {
-        if (connected) {
-          await client.end().catch((error) => {
-            console.error("Database cleanup failed:", error);
-          });
-        }
       }
-    }
 
-    // 3. Sequelize compatibility test
-    if (url.pathname === "/sequelize-test") {
-      let sequelize;
+      // ======================================
+      // 4. WORKER HEALTH CHECK
+      // ======================================
 
-      try {
-        console.log("Testing Sequelize connection...");
+      if (url.pathname === "/health") {
+        return withCors(
+          Response.json({
+            success: true,
+            message: "SkillBridge Cloudflare Worker",
+            status: "Running",
+          })
+        );
+      }
 
-        sequelize = new Sequelize(
-          env.HYPERDRIVE.connectionString,
-          {
-            dialect: "postgres",
-            dialectModule: pg,
-            logging: false,
-            pool: {
-              max: 1,
-              min: 0,
-              acquire: 10000,
-              idle: 10000,
-            },
+      // ======================================
+      // 5. POSTGRESQL CONNECTION TEST
+      // ======================================
+
+      if (url.pathname === "/db-test") {
+        if (!env.HYPERDRIVE) {
+          throw new Error("Cloudflare Hyperdrive binding is missing");
+        }
+
+        const client = new Client({
+          connectionString: env.HYPERDRIVE.connectionString,
+          connectionTimeoutMillis: 10000,
+          query_timeout: 10000,
+        });
+
+        let connected = false;
+
+        try {
+          console.log("Attempting Supabase connection...");
+
+          await client.connect();
+          connected = true;
+
+          console.log("Supabase connection established.");
+
+          const result = await client.query(`
+            SELECT
+              current_database() AS database,
+              current_user AS username,
+              NOW() AS server_time
+          `);
+
+          return withCors(
+            Response.json({
+              success: true,
+              message: "Supabase PostgreSQL connection successful",
+              data: result.rows[0],
+            })
+          );
+        } finally {
+          if (connected) {
+            await client.end().catch((error) => {
+              console.error("Database cleanup failed:", error);
+            });
           }
-        );
-
-        await sequelize.authenticate();
-
-        const [results] = await sequelize.query(
-          `SELECT
-            current_database() AS database,
-            current_user AS username,
-            NOW() AS server_time`
-        );
-
-        console.log("Sequelize connection successful.");
-
-        return Response.json({
-          success: true,
-          message: "Sequelize connection successful",
-          data: results[0],
-        });
-      } catch (error) {
-        console.error("Sequelize test failed:", error);
-
-        return Response.json(
-          {
-            success: false,
-            message: "Sequelize connection failed",
-            error: error.message,
-          },
-          { status: 500 }
-        );
-      } finally {
-        if (sequelize) {
-          await sequelize.close().catch((error) => {
-            console.error("Sequelize cleanup failed:", error);
-          });
         }
       }
-    }
 
+      // ======================================
+      // 6. SEQUELIZE CONNECTION TEST
+      // ======================================
 
-    // Brevo HTTPS email delivery test
-    if (url.pathname === "/mailer-test") {
-      try {
+      if (url.pathname === "/sequelize-test") {
+        if (!env.HYPERDRIVE) {
+          throw new Error("Cloudflare Hyperdrive binding is missing");
+        }
+
+        let sequelize;
+
+        try {
+          console.log("Testing Sequelize connection...");
+
+          sequelize = new Sequelize(
+            env.HYPERDRIVE.connectionString,
+            {
+              dialect: "postgres",
+              dialectModule: pg,
+              logging: false,
+              pool: {
+                max: 1,
+                min: 0,
+                acquire: 10000,
+                idle: 10000,
+              },
+            }
+          );
+
+          await sequelize.authenticate();
+
+          const [results] = await sequelize.query(`
+            SELECT
+              current_database() AS database,
+              current_user AS username,
+              NOW() AS server_time
+          `);
+
+          console.log("Sequelize connection successful.");
+
+          return withCors(
+            Response.json({
+              success: true,
+              message: "Sequelize connection successful",
+              data: results[0],
+            })
+          );
+        } finally {
+          if (sequelize) {
+            await sequelize.close().catch((error) => {
+              console.error("Sequelize cleanup failed:", error);
+            });
+          }
+        }
+      }
+
+      // ======================================
+      // 7. BREVO EMAIL TEST
+      // ======================================
+
+      if (url.pathname === "/mailer-test") {
         if (!env.BREVO_API_KEY || !env.MAIL_FROM) {
-          throw new Error("Missing BREVO_API_KEY or MAIL_FROM secret");
+          throw new Error(
+            "Missing BREVO_API_KEY or MAIL_FROM secret"
+          );
         }
 
         const response = await fetch(
@@ -167,49 +216,62 @@ export default {
         if (!response.ok) {
           console.error("Brevo API error:", result);
 
-          return Response.json(
-            {
-              success: false,
-              message: "Brevo email request failed",
-              error: result,
-            },
-            { status: response.status }
+          return withCors(
+            Response.json(
+              {
+                success: false,
+                message: "Brevo email request failed",
+                error: result,
+              },
+              { status: response.status }
+            )
           );
         }
 
-        return Response.json({
-          success: true,
-          message: "Brevo accepted the test email",
-          messageId: result.messageId,
-        });
-      } catch (error) {
-        console.error("Brevo email test failed:", error);
-
-        return Response.json(
-          {
-            success: false,
-            message: "Brevo email test failed",
-            error: error.message,
-          },
-          { status: 500 }
+        return withCors(
+          Response.json({
+            success: true,
+            message: "Brevo accepted the test email",
+            messageId: result.messageId,
+          })
         );
       }
-    }
 
-    // 4. Forward other requests to the existing Express API.
-    try {
-      return await handleExpressRequest(request, env);
+      // ======================================
+      // 8. EXPRESS API REQUEST FORWARDING
+      // ======================================
+
+      console.log(
+        `${request.method} ${url.pathname} - Forwarding to Express`
+      );
+
+      const response = await handleExpressRequest(request, env);
+
+      // Preserve the Express status, body and headers,
+      // while adding CORS headers.
+      return withCors(response);
+
     } catch (error) {
-      console.error("SkillBridge API request failed:");
-      console.error(error.stack || error);
+      // ======================================
+      // 9. GLOBAL ERROR HANDLING
+      // ======================================
 
-      return Response.json(
-        {
-          success: false,
-          message: "SkillBridge API request failed.",
-          error: error.message,
-        },
-        { status: 500 }
+      console.error("SkillBridge Worker error:", {
+        message: error.message,
+        stack: error.stack,
+        path: url.pathname,
+        method: request.method,
+      });
+
+      return withCors(
+        Response.json(
+          {
+            success: false,
+            message: "SkillBridge API request failed.",
+            error: "An internal server error occurred.",
+          },
+          { status: 500 }
+        )
       );
     }
   },

@@ -2,6 +2,7 @@
 import Matching from "../models/matching.model.js";
 import Opportunity from "../models/opportunity.model.js";
 import SkillGap from "../models/skillgap.model.js";
+import { runJobMatchingFromDatabase } from "./ai.service.js";
 
 // Create an error with an HTTP status code.
 const createError = (message, statusCode) => {
@@ -211,6 +212,169 @@ const getUserCareerMatches = async (userId) => {
   });
 
   return matches;
+};
+
+export const generateAIMatches = async (userId) => {
+  // 1. Get the candidate's latest completed skill gap analysis
+  const skillGap = await SkillGap.findOne({
+    where: {
+      userId,
+      status: "completed",
+    },
+    order: [["createdAt", "DESC"]],
+  });
+
+  if (!skillGap) {
+    throw createError(
+      "Complete a CV skill gap analysis before generating job matches.",
+      404
+    );
+  }
+
+  // 2. Get the candidate's skills
+  const candidateProfile = {
+    targetRole: skillGap.targetJobTitle,
+    skills: skillGap.currentSkills || [],
+    seniorityLevel: skillGap.careerStage || "Entry",
+  };
+
+  // 3. Get active opportunities from the database
+  const activeJobs = await Opportunity.findAll({
+    where: {
+      status: "active",
+    },
+    attributes: [
+      "id",
+      "title",
+      "company",
+      "description",
+      "type",
+      "category",
+      "location",
+      "workMode",
+      "applicationUrl",
+      "requiredSkills",
+      "preferredSkills",
+    ],
+  });
+
+  if (activeJobs.length === 0) {
+    throw createError(
+      "There are currently no active opportunities available.",
+      404
+    );
+  }
+
+  // 4. Convert Sequelize records into plain objects for Gemini
+  const jobsForAI = activeJobs.map((job) => ({
+    job_id: job.id,
+    job_title: job.title,
+    company_name: job.company,
+    description: job.description,
+    opportunity_type: job.type,
+    category: job.category,
+    location: job.location,
+    work_mode: job.workMode,
+    required_skills: job.requiredSkills || [],
+    preferred_skills: job.preferredSkills || [],
+    apply_link: job.applicationUrl,
+  }));
+
+  // 5. Send candidate profile and opportunities to Gemini
+  const aiResult = await runJobMatchingFromDatabase(
+    candidateProfile,
+    jobsForAI
+  );
+
+  // 6. Match AI results against actual database opportunities.
+  // This prevents the AI from introducing unknown opportunity IDs.
+  const opportunityMap = new Map(
+    activeJobs.map((job) => [job.id, job])
+  );
+
+  const savedMatches = [];
+
+  for (const aiMatch of aiResult.matched_jobs) {
+    const opportunity = opportunityMap.get(aiMatch.job_id);
+
+    if (!opportunity) {
+      continue;
+    }
+
+    const percentage = Number(aiMatch.match_percentage);
+
+    if (
+      !Number.isFinite(percentage) ||
+      percentage < 0 ||
+      percentage > 100
+    ) {
+      continue;
+    }
+
+    const matchedSkills = Array.isArray(aiMatch.matching_skills)
+      ? aiMatch.matching_skills.filter(
+        (skill) => typeof skill === "string"
+      )
+      : [];
+
+    const missingSkills = Array.isArray(aiMatch.missing_skills)
+      ? aiMatch.missing_skills.filter(
+        (skill) => typeof skill === "string"
+      )
+      : [];
+
+    // 7. Save or update the user's match
+    const [matching] = await Matching.findOrCreate({
+      where: {
+        userId,
+        opportunityId: opportunity.id,
+      },
+      defaults: {
+        userId,
+        opportunityId: opportunity.id,
+        matchPercentage: Math.round(percentage),
+        matchedSkills,
+        missingSkills,
+        explanation: aiMatch.why_good_fit || "",
+        status: "completed",
+      },
+    });
+
+    if (matching) {
+      await matching.update({
+        matchPercentage: Math.round(percentage),
+        matchedSkills,
+        missingSkills,
+        explanation: aiMatch.why_good_fit || "",
+        status: "completed",
+      });
+    }
+
+    savedMatches.push(matching);
+  }
+
+  // 8. Return saved matches with their opportunity details
+  const matches = await Matching.findAll({
+    where: {
+      userId,
+      status: "completed",
+    },
+    include: [
+      {
+        model: Opportunity,
+        as: "opportunity",
+        where: {
+          status: "active",
+        },
+      },
+    ],
+    order: [["matchPercentage", "DESC"]],
+  });
+
+  return {
+    total_matches_found: matches.length,
+    matches,
+  };
 };
 
 export {

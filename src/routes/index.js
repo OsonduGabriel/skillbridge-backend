@@ -11,7 +11,8 @@ import progressRoutes from "./progress.routes.js";
 import cvRoutes from "./cv.routes.js";
 import skillgapRoutes from "./skillgap.routes.js";
 import matchingRoutes from "./matching.routes.js";
-
+import learningRoutes from "./learning.routes.js";
+import certificationRoutes from "./certification.routes.js";
 
 const router = express.Router();
 
@@ -35,6 +36,11 @@ router.use("/recommendations", recommendationRoutes);
 
 // Learning progress tracking
 router.use("/progress", progressRoutes);
+
+// Learning and course management
+router.use("/learning", learningRoutes);
+
+router.use("/certifications", certificationRoutes);
 
 // CV management and analysis
 router.use("/cvs", cvRoutes);

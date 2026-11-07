@@ -1,7 +1,6 @@
 
 import express from "express";
 import cors from "cors";
-import swaggerUi from "swagger-ui-express";
 import swaggerSpec from "./swagger/swagger.js";
 import { errorHandler } from "./middleware/error.middleware.js";
 import "./models/index.js";
@@ -12,21 +11,25 @@ const app = express();
 
 app.use(express.json());
 
-//cors
-app.use(cors({
-  origin: [
-    "http://localhost:3000",
-    "https://skillbridge-weld.vercel.app"
-  ],
-}));
+// Configure CORS to allow requests from the frontend.
+app.use(
+  cors({
+    origin: [
+      "http://localhost:3000",
+      "https://skillbridge-weld.vercel.app",
+    ],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 
 // API health check.
 app.get("/", (req, res) => {
   res.status(200).json({
     success: true,
     message: "SkillBridge API",
-    version: "1.0.1",
-    status: "Running.",
+    version: "1.0.0",
+    status: "Running",
   });
 });
 

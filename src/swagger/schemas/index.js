@@ -10,6 +10,10 @@ import progressSchema from "./progress.schema.js";
 import profileSwaggerSchema from "./profile.schema.js";
 import opportunitySchema from "./opportunity.schema.js";
 import matchingSchema from "./matching.schema.js";
+import learningSchema from "./learning.schema.js";
+import certificationSchema from "./certification.schema.js";
+
+
 
 const schemas = {
   ...userSchema,
@@ -22,7 +26,8 @@ const schemas = {
   ...progressSchema,
   ...profileSwaggerSchema,
   ...opportunitySchema,
-  ...matchingSchema
+  ...matchingSchema,
+  ...learningSchema,
+  ...certificationSchema,
 };
-
 export default schemas;
