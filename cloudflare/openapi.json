@@ -5290,7 +5290,15 @@
         ],
         "parameters": [
           {
-            "$ref": "#/components/parameters/CVId"
+            "in": "path",
+            "name": "cvId",
+            "required": true,
+            "description": "The UUID of the CV returned when the user uploads a CV.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "5ead9e08-6141-48c8-b854-96536c8afd2e"
           }
         ],
         "requestBody": {
@@ -5732,25 +5740,42 @@
         "tags": [
           "Authentication"
         ],
-        "summary": "Verify a user's email address",
-        "description": "Verifies a newly registered user's email address using the six-digit verification code sent to their email.\n",
+        "summary": "Verify user email address",
+        "description": "Verifies a user's email using the six-digit verification code sent during registration.",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/VerifyEmailRequest"
+                "$ref": "#/components/schemas/VerifyEmailRequest",
+                "type": "object",
+                "required": [
+                  "email",
+                  "code"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "example": "user@example.com"
+                  },
+                  "code": {
+                    "type": "string",
+                    "pattern": "^\\\\d{6}$",
+                    "example": "123456"
+                  }
+                }
               },
               "example": {
                 "email": "student@example.com",
-                "code": "123456"
+                "code": 123456
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Email verified successfully.",
+            "description": "Email verification successful",
             "content": {
               "application/json": {
                 "schema": {
@@ -5760,7 +5785,7 @@
             }
           },
           "400": {
-            "description": "Email or verification code is missing, or the code is not six digits."
+            "description": "Missing or invalid email verification details"
           },
           "500": {
             "description": "Email verification failed."
@@ -5912,49 +5937,6 @@
           },
           "500": {
             "description": "Password reset failed."
-          }
-        }
-      }
-    },
-    "/api/v1/auth/verify-email": {
-      "post": {
-        "summary": "Verify user email address",
-        "description": "Verifies a user's email using the six-digit verification code sent during registration.",
-        "tags": [
-          "Authentication"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "email",
-                  "code"
-                ],
-                "properties": {
-                  "email": {
-                    "type": "string",
-                    "format": "email",
-                    "example": "user@example.com"
-                  },
-                  "code": {
-                    "type": "string",
-                    "pattern": "^\\\\d{6}$",
-                    "example": "123456"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Email verification successful"
-          },
-          "400": {
-            "description": "Missing or invalid email verification details"
           }
         }
       }
