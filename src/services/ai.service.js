@@ -44,7 +44,7 @@ const generateJSONWithAI = async (
 
   try {
     response = await ai.models.generateContent({
-      model: "gemini-3.8-flash",
+      model: "gemini-3.7-flash",
 
       contents: [
         {
