@@ -434,7 +434,7 @@ Return only a valid JSON object with this exact structure:
 {
   "learning_roadmap": [
     {
-      "phase": "Phase 1: Foundation (Weeks 1-4)",
+      "phase": "Days 1-30",
       "focus_skill": "Primary skill gap",
       "learning_objectives": ["Objective 1", "Objective 2"],
       "recommended_topics": ["Topic 1", "Topic 2"],
@@ -455,11 +455,15 @@ Return only a valid JSON object with this exact structure:
     }
   ]
 }
-
 Rules:
-- Return arrays even when only one item is appropriate.
+- Return exactly 3 learning phases, in this exact order:
+  1. Days 1-30: Foundation. Focus on fundamentals and core concepts.
+  2. Days 31-60: Skill Development. Focus on building practical skills and solving intermediate problems.
+  3. Days 61-90: Practical Application. Focus on real-world projects and demonstrating job readiness.
+- Use these exact phase labels: "Days 1-30", "Days 31-60", and "Days 61-90".
 - Each learning phase must contain all required fields.
 - Each project must contain all required fields.
+- Return at least one practical project.
 - Use realistic learning objectives and practical projects.
 - Mark unverified metrics as placeholders; do not invent achievements.
 - Return JSON only.
@@ -485,10 +489,11 @@ ${JSON.stringify(missingSkills)}
 
   const validRoadmap =
     Array.isArray(result.learning_roadmap) &&
+    result.learning_roadmap.length === 3 &&
     result.learning_roadmap.every(
-      (phase) =>
+      (phase, index) =>
         phase &&
-        typeof phase.phase === "string" &&
+        phase.phase === ["Days 1-30", "Days 31-60", "Days 61-90"][index] &&
         typeof phase.focus_skill === "string" &&
         isStringArray(phase.learning_objectives) &&
         isStringArray(phase.recommended_topics) &&
@@ -496,9 +501,9 @@ ${JSON.stringify(missingSkills)}
           phase.recommended_courses_or_search_keywords
         )
     );
-
   const validProjects =
     Array.isArray(result.recommended_projects) &&
+    result.recommended_projects.length >= 1 &&
     result.recommended_projects.every(
       (project) =>
         project &&

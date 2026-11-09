@@ -1,10 +1,7 @@
 import sequelize from "../config/database.js";
 import Roadmap, { ROADMAP_STATUSES } from "../models/roadmap.model.js";
-import RoadmapTask, {
-  ROADMAP_PHASES,
-  ROADMAP_TASK_STATUSES,
-  ROADMAP_TASK_TYPES,
-} from "../models/roadmap-task.model.js";
+import RoadmapTask, { ROADMAP_PHASES, ROADMAP_TASK_STATUSES, ROADMAP_TASK_TYPES, } from "../models/roadmap-task.model.js";
+import { generateRoadmapWithAI } from "./ai.service.js";
 
 const TASK_WRITABLE_FIELDS = [
   "phase",
@@ -62,8 +59,8 @@ const assertSkillBelongsToGap = async (userId, skillGapId, skill) => {
   const skillGap = await getOwnedSkillGap(userId, skillGapId);
   const missingSkills = Array.isArray(skillGap.missingSkills)
     ? skillGap.missingSkills
-        .filter((item) => typeof item === "string")
-        .map((item) => item.toLowerCase())
+      .filter((item) => typeof item === "string")
+      .map((item) => item.toLowerCase())
     : [];
   if (!missingSkills.includes(skill)) {
     throw httpError(422, "Task skill must be in the linked skill gap's missingSkills");
@@ -87,10 +84,125 @@ const assertTaskValues = (values) => {
     throw httpError(422, "Invalid task status");
   }
 };
-
 export const generateRoadmap = async (userId, skillGapId) => {
-  await getOwnedSkillGap(userId, skillGapId);
-  throw httpError(503, "Roadmap generation is unavailable until an AI provider is selected");
+  const skillGap = await getOwnedSkillGap(userId, skillGapId);
+
+  const aiResult = await generateRoadmapWithAI({
+    currentSkills: skillGap.currentSkills || [],
+    missingSkills: skillGap.missingSkills || [],
+    targetRole: skillGap.targetJobTitle.slice(0, 200),
+    primaryGoal: "Career development",
+  });
+
+  const missingSkills = (skillGap.missingSkills || [])
+    .filter((skill) => typeof skill === "string")
+    .map((skill) => skill.toLowerCase());
+
+  const matchMissingSkill = (candidate) => {
+    if (typeof candidate !== "string") return null;
+
+    return (
+      missingSkills.find(
+        (skill) => skill === candidate.trim().toLowerCase(),
+      ) || null
+    );
+  };
+
+  const tasks = [];
+  const positions = { 30: 0, 60: 0, 90: 0 };
+
+  const addTask = (phase, task) => {
+    tasks.push({
+      phase,
+      position: positions[phase]++,
+      status: "todo",
+      ...task,
+    });
+  };
+
+  aiResult.learning_roadmap.forEach((learningPhase, index) => {
+    const phase = ROADMAP_PHASES[index];
+
+    const objectives = learningPhase.learning_objectives.length
+      ? learningPhase.learning_objectives
+      : learningPhase.recommended_topics;
+
+    objectives.forEach((objective) => {
+      const description = [
+        `Focus skill: ${learningPhase.focus_skill}`,
+        `Learning objective: ${objective}`,
+        `Recommended topics: ${learningPhase.recommended_topics.join(", ")}`,
+        `Suggested searches: ${learningPhase.recommended_courses_or_search_keywords.join(", ")}`,
+      ].join("\n\n");
+
+      addTask(phase, {
+        title: objective.slice(0, 200),
+        description,
+        taskType: "learn",
+        skill: matchMissingSkill(learningPhase.focus_skill),
+      });
+    });
+  });
+
+  aiResult.recommended_projects.forEach((project) => {
+    const description = [
+      project.target_role_relevance,
+      `Difficulty: ${project.difficulty_level}`,
+      `Key features: ${project.key_features.join(", ")}`,
+      `Tech stack: ${project.tech_stack.join(", ")}`,
+      `Skills demonstrated: ${project.skills_demonstrated.join(", ")}`,
+      `Resume bullet: ${project.resume_bullet_point}`,
+    ].join("\n\n");
+
+    const matchingSkill =
+      project.skills_demonstrated
+        .map(matchMissingSkill)
+        .find(Boolean) || null;
+
+    addTask(90, {
+      title: project.project_title.slice(0, 200),
+      description,
+      taskType: "project",
+      skill: matchingSkill,
+    });
+  });
+
+  if (tasks.length === 0) {
+    throw httpError(
+      502,
+      "AI did not generate any usable roadmap tasks. Please try again.",
+    );
+  }
+
+  const roadmap = await sequelize.transaction(async (transaction) => {
+    const createdRoadmap = await Roadmap.create(
+      {
+        userId,
+        skillGapId,
+        title: `90-Day ${skillGap.targetJobTitle} Learning Roadmap`.slice(
+          0,
+          200,
+        ),
+        targetRole: skillGap.targetJobTitle,
+        summary: `A personalized 90-day learning plan to develop ${missingSkills.join(", ")} for the ${skillGap.targetJobTitle} role.`,
+        status: "draft",
+        generatedBy: "ai",
+      },
+      { transaction },
+    );
+
+    await RoadmapTask.bulkCreate(
+      tasks.map((task) => ({
+        ...task,
+        roadmapId: createdRoadmap.id,
+      })),
+      { transaction },
+    );
+
+    return createdRoadmap;
+  });
+
+  return getRoadmap(userId, roadmap.id);
 };
 
 export const listRoadmaps = (userId) =>
