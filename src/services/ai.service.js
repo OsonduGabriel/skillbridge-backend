@@ -21,7 +21,15 @@ const getAIClient = () => {
     throw error;
   }
 
-  return new GoogleGenAI({ apiKey });
+  return new GoogleGenAI({
+    apiKey,
+    httpOptions: {
+      timeout: 20000,
+      retryOptions: {
+        attempts: 1,
+      },
+    },
+  });
 };
 // Create an error with an HTTP status code.
 const createError = (message, statusCode) => {
