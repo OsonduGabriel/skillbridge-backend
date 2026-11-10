@@ -8,7 +8,6 @@ import mammoth from "mammoth";
 import { getCVFromR2 } from "./cv-storage.service.js";
 import CVAnalysis from "../models/cv.analysis.model.js";
 import sanitizePII from "../utils/pii.sanitizer.js";
-
 import {
   createSkillGap,
   completeSkillGapAnalysis,
@@ -162,7 +161,9 @@ const processCVAnalysis = async ({
     throw error;
   }
 
-  // Retrieve the uploaded CV from Cloudflare R2.
+  // Step 1: Retrieve the uploaded CV from Cloudflare R2.
+  console.log("[CV ANALYSIS] Starting R2 retrieval");
+
   const cvObject = await getCVFromR2(cv.filePath);
 
   if (!cvObject) {
@@ -171,12 +172,20 @@ const processCVAnalysis = async ({
     throw error;
   }
 
-  // Convert the R2 object into a Node.js Buffer.
+  console.log("[CV ANALYSIS] R2 retrieval completed");
+
+  // Step 2: Convert the R2 object into a Node.js Buffer.
   const fileBuffer = Buffer.from(
     await cvObject.arrayBuffer()
   );
 
-  // Extract the CV text.
+  console.log("[CV ANALYSIS] CV file downloaded", {
+    fileSize: fileBuffer.length,
+  });
+
+  // Step 3: Extract text from the CV.
+  console.log("[CV ANALYSIS] Starting PDF text extraction");
+
   const extractedText = await extractTextFromCV(
     fileBuffer,
     cv.fileName,
@@ -185,15 +194,22 @@ const processCVAnalysis = async ({
 
   if (!extractedText || !extractedText.trim()) {
     const error = new Error("No readable text was found in the CV.");
-
     error.statusCode = 400;
     throw error;
   }
 
-  // Step 2: Remove personally identifiable information.
+  console.log("[CV ANALYSIS] PDF text extraction completed", {
+    textLength: extractedText.length,
+  });
+
+  // Step 4: Remove personally identifiable information.
   const sanitizedText = await sanitizeCVText(extractedText);
 
-  // Step 3: Save the initial CV analysis record.
+  console.log("[CV ANALYSIS] PII sanitization completed");
+
+  // Step 5: Save the initial CV analysis record.
+  console.log("[CV ANALYSIS] Saving initial analysis");
+
   const analysis = await saveExtractedText({
     cvId: cv.id,
     targetJobTitle,
@@ -204,7 +220,11 @@ const processCVAnalysis = async ({
     sanitizedText,
   });
 
-  // Step 4: Create a pending SkillGap record.
+  console.log("[CV ANALYSIS] Initial analysis saved");
+
+  // Step 6: Create a pending SkillGap record.
+  console.log("[CV ANALYSIS] Creating SkillGap record");
+
   const skillGap = await createSkillGap(cv.userId, {
     cvId: cv.id,
     targetJobTitle,
@@ -212,8 +232,12 @@ const processCVAnalysis = async ({
     requiredSkills: [],
   });
 
+  console.log("[CV ANALYSIS] SkillGap created");
+
   try {
-    // Step 5: Send sanitized CV text to the AI service.
+    // Step 7: Send sanitized CV text to Gemini.
+    console.log("[CV ANALYSIS] Starting Gemini request");
+
     const aiResponse = await analyzeCVWithAI({
       cvId: cv.id,
       sanitizedText,
@@ -222,13 +246,17 @@ const processCVAnalysis = async ({
       careerStage,
     });
 
+    console.log("[CV ANALYSIS] Gemini request completed");
+
     const result = aiResponse.analysis;
 
     if (!result) {
       throw new Error("The AI service returned no analysis result.");
     }
 
-    // Step 6: Save the AI analysis result.
+    // Step 8: Save the AI analysis result.
+    console.log("[CV ANALYSIS] Saving AI analysis result");
+
     const savedAnalysis = await saveAIAnalysisResult(
       analysis.id,
       result
@@ -238,7 +266,11 @@ const processCVAnalysis = async ({
       throw new Error("Could not save the CV analysis result.");
     }
 
-    // Step 7: Complete the SkillGap record using the AI result.
+    console.log("[CV ANALYSIS] AI analysis result saved");
+
+    // Step 9: Complete the SkillGap record.
+    console.log("[CV ANALYSIS] Completing SkillGap analysis");
+
     const completedSkillGap = await completeSkillGapAnalysis(
       skillGap.id,
       cv.userId,
@@ -254,6 +286,8 @@ const processCVAnalysis = async ({
       throw new Error("Could not save the SkillGap analysis result.");
     }
 
+    console.log("[CV ANALYSIS] SkillGap analysis completed");
+
     // Return both saved records to the controller.
     return {
       analysis: savedAnalysis,
@@ -261,12 +295,18 @@ const processCVAnalysis = async ({
       sanitizedText,
     };
   } catch (error) {
+    console.error("[CV ANALYSIS] Processing failed:", {
+      message: error.message,
+      status: error.status,
+    });
+
     // Mark the SkillGap record as failed if processing fails.
     try {
       await failSkillGapAnalysis(skillGap.id, cv.userId);
+      console.log("[CV ANALYSIS] SkillGap marked as failed");
     } catch (statusError) {
       console.error(
-        "Could not update SkillGap failure status:",
+        "[CV ANALYSIS] Could not update SkillGap failure status:",
         statusError.message
       );
     }
