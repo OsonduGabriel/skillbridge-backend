@@ -132,37 +132,39 @@ export const verifyEmailService = async (email, code) => {
 
 
 
+
 export const loginUser = async ({ email, password }) => {
   const normalizedEmail = email.trim().toLowerCase();
 
-  // Find user
   const user = await User.findOne({
     where: { email: normalizedEmail },
   });
 
   if (!user) {
-    throw new Error("Invalid email or password");
+    const error = new Error("Invalid email or password");
+    error.statusCode = 401;
+    throw error;
   }
 
-  // Check password
   const isPasswordValid = await bcrypt.compare(
     password,
     user.password
   );
 
   if (!isPasswordValid) {
-    throw new Error("Invalid email or password");
+    const error = new Error("Invalid email or password");
+    error.statusCode = 401;
+    throw error;
   }
-  if (user.isVerified !== true) {
-    console.log("LOGIN VERIFICATION DEBUG:", {
-      email: user.email,
-      isVerified: user.isVerified,
-      dataValues: user.dataValues?.isVerified,
-    });
 
-    throw new Error("Please verify your email before logging in");
+  if (user.isVerified !== true) {
+    const error = new Error(
+      "Please verify your email before logging in"
+    );
+    error.statusCode = 403;
+    throw error;
   }
-  // Generate JWT
+
   const token = generateToken(user);
 
   return {
@@ -176,6 +178,7 @@ export const loginUser = async ({ email, password }) => {
     token,
   };
 };
+
 
 const RESET_CODE_EXPIRY_MINUTES = 10;
 const MAX_RESET_ATTEMPTS = 5;
