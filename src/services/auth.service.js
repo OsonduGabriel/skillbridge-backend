@@ -75,15 +75,26 @@ export const registerUser = async ({ fullName, email, password }) => {
 };
 
 
+
 export const verifyEmailService = async (email, code) => {
   const normalizedEmail = email.trim().toLowerCase();
-  const normalizedCode = String(code).trim();
 
   const user = await User.findOne({
     where: { email: normalizedEmail },
   });
 
-  if (!user || user.isVerified || !user.emailVerificationCodeHash) {
+  if (!user) {
+    throw new Error("Invalid or expired verification code");
+  }
+
+  // Already verified? Return success instead of throwing an error.
+  if (user.isVerified) {
+    return {
+      message: "Email already verified. You can now log in.",
+    };
+  }
+
+  if (!user.emailVerificationCodeHash) {
     throw new Error("Invalid or expired verification code");
   }
 
@@ -97,6 +108,8 @@ export const verifyEmailService = async (email, code) => {
   if (user.emailVerificationAttempts >= MAX_VERIFICATION_ATTEMPTS) {
     throw new Error("Too many attempts. Please request a new code.");
   }
+
+  const normalizedCode = String(code).trim();
 
   user.emailVerificationAttempts += 1;
 
@@ -116,6 +129,7 @@ export const verifyEmailService = async (email, code) => {
     message: "Email verified successfully. You can now log in.",
   };
 };
+
 
 
 export const loginUser = async ({ email, password }) => {
