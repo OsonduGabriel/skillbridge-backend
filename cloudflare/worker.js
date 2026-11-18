@@ -257,10 +257,12 @@ export default {
       // ======================================
 
       console.error("SkillBridge Worker error:", {
+        name: error.name,
         message: error.message,
         stack: error.stack,
         path: url.pathname,
         method: request.method,
+        timestamp: new Date().toISOString(),
       });
 
       return withCors(

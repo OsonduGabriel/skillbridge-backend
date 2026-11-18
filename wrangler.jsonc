@@ -17,5 +17,9 @@
 			"binding": "CV_BUCKET",
 			"bucket_name": "skillbridge-cvs"
 		}
-	]
+	],
+	"observability": {
+		"enabled": true,
+		"head_sampling_rate": 1
+	}
 }
