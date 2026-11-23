@@ -1,6 +1,4 @@
 
-const isCloudflare = process.env.CLOUDFLARE_WORKER === "true";
-
 const getEmailContent = (code) => ({
   subject: "Verify your SkillBridge email",
   text: `Your SkillBridge verification code is ${code}. It expires in 10 minutes.`,
@@ -15,7 +13,7 @@ const getEmailContent = (code) => ({
   `,
 });
 
-// Cloudflare uses Brevo's HTTPS API.
+// Send email through Brevo's HTTPS API.
 const sendWithBrevo = async (email, code) => {
   const { BREVO_API_KEY, MAIL_FROM } = process.env;
 
@@ -55,69 +53,16 @@ const sendWithBrevo = async (email, code) => {
   return response.json();
 };
 
-// Render continues using Gmail SMTP and Nodemailer.
-const sendWithNodemailer = async (email, code) => {
-  const { SMTP_USER, SMTP_PASS, MAIL_FROM } = process.env;
-
-  if (!SMTP_USER || !SMTP_PASS || !MAIL_FROM) {
-    throw new Error("Missing SMTP_USER, SMTP_PASS or MAIL_FROM");
-  }
-
-  const { default: nodemailer } = await import("nodemailer");
-
-  const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-      user: SMTP_USER,
-      pass: SMTP_PASS,
-    },
-  });
-
-  const content = getEmailContent(code);
-
-  return transporter.sendMail({
-    from: `"SkillBridge" <${MAIL_FROM}>`,
-    to: email,
-    subject: content.subject,
-    text: content.text,
-    html: content.html,
-  });
-};
-
+// Check that the required Brevo configuration exists.
 export const verifyMailerConnection = async () => {
-  if (isCloudflare) {
-    if (!process.env.BREVO_API_KEY || !process.env.MAIL_FROM) {
-      throw new Error("Missing BREVO_API_KEY or MAIL_FROM");
-    }
-
-    console.log("Brevo email configuration loaded successfully");
-    return;
+  if (!process.env.BREVO_API_KEY || !process.env.MAIL_FROM) {
+    throw new Error("Missing BREVO_API_KEY or MAIL_FROM");
   }
 
-  const { SMTP_USER, SMTP_PASS, MAIL_FROM } = process.env;
-
-  if (!SMTP_USER || !SMTP_PASS || !MAIL_FROM) {
-    throw new Error("Missing SMTP_USER, SMTP_PASS or MAIL_FROM");
-  }
-
-  const { default: nodemailer } = await import("nodemailer");
-
-  const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-      user: SMTP_USER,
-      pass: SMTP_PASS,
-    },
-  });
-
-  await transporter.verify();
-  console.log("Email service connected successfully");
+  console.log("Brevo email configuration loaded successfully");
 };
 
+// Send verification email.
 export const sendVerificationEmail = async (email, code) => {
-  if (isCloudflare) {
-    return sendWithBrevo(email, code);
-  }
-
-  return sendWithNodemailer(email, code);
+  return sendWithBrevo(email, code);
 };

@@ -18,18 +18,23 @@
   "author": "",
   "license": "ISC",
   "type": "module",
+  "engines": {
+    "node": "24.x"
+  },
   "bugs": {
     "url": "https://github.com/OsonduGabriel/skillbridge-backend/issues"
   },
   "homepage": "https://github.com/OsonduGabriel/skillbridge-backend#readme",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.130.0",
+    "@aws-sdk/client-s3": "^3.1175.0",
     "@google/genai": "^2.30.0",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "dotenv": "^18.0.5",
     "esm": "^3.2.25",
+    "exceljs": "^4.4.0",
     "express": "^5.2.1",
     "express-rate-limit": "^8.7.0",
     "express-validator": "^7.3.2",
@@ -46,7 +51,6 @@
     "sequelize": "^6.37.8",
     "swagger-jsdoc": "^6.3.0",
     "swagger-ui-express": "^5.0.1",
-    "xlsx": "^0.18.5",
     "zod": "^4.6.7"
   },
   "devDependencies": {

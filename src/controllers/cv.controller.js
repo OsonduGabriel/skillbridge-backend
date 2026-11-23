@@ -145,7 +145,7 @@ const downloadCV = async (req, res, next) => {
       });
     }
 
-    const buffer = Buffer.from(await object.arrayBuffer());
+    const buffer = Buffer.from(await object.Body.transformToByteArray());
 
     res.attachment(cv.fileName);
 

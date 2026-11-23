@@ -1,5 +1,5 @@
 
-import XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import { fileURLToPath } from "url";
 
 import sequelize from "../src/config/database.js";
@@ -160,11 +160,12 @@ const seedOpportunities = async () => {
 
     console.log("Reading opportunities Excel workbook...");
 
-    // Read the Excel workbook.
-    const workbook = XLSX.readFile(workbookPath);
+    // Read the Excel workbook using ExcelJS.
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.readFile(workbookPath);
 
     // Check that the expected worksheet exists.
-    const worksheet = workbook.Sheets[SHEET_NAME];
+    const worksheet = workbook.getWorksheet(SHEET_NAME);
 
     if (!worksheet) {
       throw new Error(
@@ -173,9 +174,16 @@ const seedOpportunities = async () => {
     }
 
     // Read all worksheet rows as arrays.
-    const sheetRows = XLSX.utils.sheet_to_json(worksheet, {
-      header: 1,
-      defval: "",
+    const sheetRows = [];
+
+    worksheet.eachRow({ includeEmpty: true }, (row) => {
+      const values = [];
+
+      for (let column = 1; column <= worksheet.columnCount; column++) {
+        values.push(row.getCell(column).text ?? "");
+      }
+
+      sheetRows.push(values);
     });
 
     // Find the actual header row using the job_id column.
