@@ -1,21 +1,62 @@
 
 import { randomUUID } from "node:crypto";
+import {
+    S3Client,
+    PutObjectCommand,
+    GetObjectCommand,
+    DeleteObjectCommand,
+} from "@aws-sdk/client-s3";
+
 import { getCloudflareEnv } from "../utils/cloudflare-context.js";
 
-// Get the R2 bucket from the current Cloudflare request.
+// Reuse the S3 client across local requests.
+let s3Client;
+
+// Detect whether the application is running inside Cloudflare.
 const getCVBucket = () => {
-    const bucket = getCloudflareEnv()?.CV_BUCKET;
-
-    if (!bucket) {
-        throw new Error(
-            "Cloudflare R2 binding CV_BUCKET is unavailable."
-        );
-    }
-
-    return bucket;
+    return getCloudflareEnv()?.CV_BUCKET || null;
 };
 
-// Prevent directory separators and unsafe characters in filenames.
+// Initialize the local Node.js S3 client.
+const getS3Client = () => {
+    if (s3Client) return s3Client;
+
+    const accountId = process.env.R2_ACCOUNT_ID;
+    const accessKeyId = process.env.R2_ACCESS_KEY_ID;
+    const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+
+    const endpoint =
+        process.env.R2_ENDPOINT ||
+        `https://${accountId}.r2.cloudflarestorage.com`;
+
+    if (!accountId || !accessKeyId || !secretAccessKey) {
+        throw new Error("Missing Cloudflare R2 S3 credentials.");
+    }
+
+    s3Client = new S3Client({
+        region: "auto",
+        endpoint,
+        credentials: {
+            accessKeyId,
+            secretAccessKey,
+        },
+    });
+
+    return s3Client;
+};
+
+// Get the bucket name for local Node.js.
+const getBucketName = () => {
+    const bucketName = process.env.R2_BUCKET_NAME;
+
+    if (!bucketName) {
+        throw new Error("Missing R2_BUCKET_NAME environment variable.");
+    }
+
+    return bucketName;
+};
+
+// Sanitize uploaded filenames.
 const sanitizeFilename = (filename) => {
     const safeName = String(filename || "cv")
         .replace(/[\/\\]/g, "_")
@@ -25,40 +66,108 @@ const sanitizeFilename = (filename) => {
     return safeName || "cv";
 };
 
-// Upload a CV buffer to R2.
+// Upload a CV to Cloudflare R2.
 const uploadCVToR2 = async (file, userId) => {
     if (!file?.buffer || !Buffer.isBuffer(file.buffer)) {
         throw new Error("CV file buffer is missing.");
     }
 
-    const bucket = getCVBucket();
-
     const fileKey =
         `cvs/${userId}/${randomUUID()}-${sanitizeFilename(file.originalname)}`;
 
-    await bucket.put(fileKey, file.buffer, {
-        httpMetadata: {
-            contentType: file.mimetype,
-        },
-        customMetadata: {
-            userId: String(userId),
-            originalName: String(file.originalname),
-        },
-    });
+    const bucket = getCVBucket();
+
+    // Cloudflare Worker upload.
+    if (bucket) {
+        await bucket.put(fileKey, file.buffer, {
+            httpMetadata: {
+                contentType: file.mimetype,
+            },
+            customMetadata: {
+                userId: String(userId),
+                originalName: String(file.originalname),
+            },
+        });
+
+        return fileKey;
+    }
+
+    // Local Node.js upload.
+    const client = getS3Client();
+
+    await client.send(
+        new PutObjectCommand({
+            Bucket: getBucketName(),
+            Key: fileKey,
+            Body: file.buffer,
+            ContentType: file.mimetype,
+            Metadata: {
+                userId: String(userId),
+                originalName: String(file.originalname),
+            },
+        })
+    );
 
     return fileKey;
 };
 
-// Retrieve a CV from R2.
+// Retrieve a CV from Cloudflare R2.
 const getCVFromR2 = async (fileKey) => {
     const bucket = getCVBucket();
-    return bucket.get(fileKey);
+
+    // Cloudflare Worker download.
+    if (bucket) {
+        return bucket.get(fileKey);
+    }
+
+    // Local Node.js download.
+    const client = getS3Client();
+
+    const response = await client.send(
+        new GetObjectCommand({
+            Bucket: getBucketName(),
+            Key: fileKey,
+        })
+    );
+
+    if (!response.Body) {
+        throw new Error("CV file was not found in R2.");
+    }
+
+    // Normalize AWS SDK response to match Cloudflare R2.
+    return {
+        arrayBuffer: async () => {
+            const bytes = await response.Body.transformToByteArray();
+
+            return bytes.buffer.slice(
+                bytes.byteOffset,
+                bytes.byteOffset + bytes.byteLength
+            );
+        },
+        httpMetadata: {
+            contentType: response.ContentType,
+        },
+    };
 };
 
-// Delete a CV from R2.
+// Delete a CV from Cloudflare R2.
 const deleteCVFromR2 = async (fileKey) => {
     const bucket = getCVBucket();
-    return bucket.delete(fileKey);
+
+    // Cloudflare Worker delete.
+    if (bucket) {
+        return bucket.delete(fileKey);
+    }
+
+    // Local Node.js delete.
+    const client = getS3Client();
+
+    return client.send(
+        new DeleteObjectCommand({
+            Bucket: getBucketName(),
+            Key: fileKey,
+        })
+    );
 };
 
 export {
