@@ -22,8 +22,8 @@ const options = {
 
     servers: [
       {
-        url: "https://skillbridge-api.tb-skillbridge-backend.workers.dev",
-        description: "Cloudflare Workers - Production",
+        url: "https://skillbridge-backend-1b07.onrender.com",
+        description: "Render - Production",
       },
       {
         url: "http://localhost:3000",
