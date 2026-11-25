@@ -175,13 +175,13 @@ const processCVAnalysis = async ({
   console.log("[CV ANALYSIS] R2 retrieval completed");
 
   // Step 2: Convert the R2 object into a Node.js Buffer.
-  const fileBuffer = Buffer.from(
-    await cvObject.arrayBuffer()
-  );
+if (!cvObject.Body) {
+  throw new Error("CV file content is missing from R2 storage.");
+}
 
-  console.log("[CV ANALYSIS] CV file downloaded", {
-    fileSize: fileBuffer.length,
-  });
+const fileBuffer = Buffer.from(
+  await cvObject.Body.transformToByteArray()
+);
 
   // Step 3: Extract text from the CV.
   console.log("[CV ANALYSIS] Starting PDF text extraction");
