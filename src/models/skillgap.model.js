@@ -1,10 +1,14 @@
+
 import { DataTypes } from "sequelize";
 import sequelize from "../config/database.js";
 
-const lowercaseStringArray = (value) =>
+// Validate that a value is an array containing non-empty strings.
+const isStringArray = (value) =>
   Array.isArray(value) &&
   value.every(
-    (item) => typeof item === "string" && item.length > 0 && item === item.toLowerCase(),
+    (item) =>
+      typeof item === "string" &&
+      item.trim().length > 0
   );
 
 const SkillGap = sequelize.define(
@@ -17,8 +21,8 @@ const SkillGap = sequelize.define(
     },
 
     userId: {
-        type: DataTypes.UUID,
-        allowNull: false
+      type: DataTypes.UUID,
+      allowNull: false,
     },
 
     cvId: {
@@ -29,7 +33,7 @@ const SkillGap = sequelize.define(
     targetJobTitle: {
       type: DataTypes.STRING,
       allowNull: false,
-    validate: {
+      validate: {
         notEmpty: {
           msg: "Target job title is required.",
         },
@@ -40,21 +44,27 @@ const SkillGap = sequelize.define(
       type: DataTypes.JSONB,
       allowNull: false,
       defaultValue: [],
-      validate: { isLowercaseStringArray: lowercaseStringArray },
+      validate: {
+        isStringArray,
+      },
     },
 
     requiredSkills: {
       type: DataTypes.JSONB,
       allowNull: false,
       defaultValue: [],
-      validate: { isLowercaseStringArray: lowercaseStringArray },
+      validate: {
+        isStringArray,
+      },
     },
 
     missingSkills: {
       type: DataTypes.JSONB,
       allowNull: false,
       defaultValue: [],
-      validate: { isLowercaseStringArray: lowercaseStringArray },
+      validate: {
+        isStringArray,
+      },
     },
 
     analysisResult: {
@@ -65,16 +75,14 @@ const SkillGap = sequelize.define(
     status: {
       type: DataTypes.ENUM("completed", "pending", "failed"),
       allowNull: false,
-      defaultValue: "pending"
-    }
-
+      defaultValue: "pending",
+    },
   },
   {
     tableName: "skill_gaps",
     timestamps: true,
     indexes: [{ fields: ["userId"] }],
-  },
+  }
 );
 
 export default SkillGap;
-

@@ -31,6 +31,7 @@ const getAIClient = () => {
     },
   });
 };
+
 // Create an error with an HTTP status code.
 const createError = (message, statusCode) => {
   const error = new Error(message);
@@ -124,10 +125,14 @@ const generateJSONWithAI = async (
 // 3. COMMON VALIDATION HELPER
 // =====================================================
 
-// Validate that a value is an array containing strings.
+// Validate that a value is an array containing non-empty strings.
 const isStringArray = (value) =>
   Array.isArray(value) &&
-  value.every((item) => typeof item === "string");
+  value.every(
+    (item) =>
+      typeof item === "string" &&
+      item.trim().length > 0
+  );
 
 // =====================================================
 // 4. SKILL GAP ANALYSIS
@@ -183,6 +188,7 @@ Return only a valid JSON object with this exact structure:
   "profile_summary": "A brief 2-3 sentence evaluation.",
   "current_level": "Estimated seniority level",
   "identified_skills": ["Skill 1", "Skill 2"],
+  "required_skills": ["Required Skill 1", "Required Skill 2"],
   "skill_gaps": ["Missing Skill 1", "Missing Skill 2"],
   "recommended_career_path": {
     "target_role": "Target job title",
@@ -199,10 +205,24 @@ Return only a valid JSON object with this exact structure:
 
 Rules:
 - match_percentage must be a number from 0 to 100.
-- identified_skills and skill_gaps must be arrays of strings.
+- identified_skills, required_skills, and skill_gaps
+  must be arrays of strings.
+- identified_skills must contain only skills supported
+  by the resume.
+- required_skills must contain the important technical
+  and professional skills expected for the specified
+  target role.
+- Include both skills the candidate already demonstrates
+  and additional skills expected for the target role.
+- skill_gaps must contain skills from required_skills
+  that the candidate does not currently demonstrate
+  in the resume.
+- Do not include irrelevant skills in skill_gaps.
+- Preserve standard skill names and capitalization.
+- Do not claim that the user possesses skills without
+  evidence in the resume.
 - action_plan must contain objects with phase, focus,
   and an array of action_items.
-- Do not claim that the user possesses skills without evidence.
 `;
 
   const userPrompt = `
@@ -240,6 +260,7 @@ ${resumeText}
     typeof result.profile_summary !== "string" ||
     typeof result.current_level !== "string" ||
     !isStringArray(result.identified_skills) ||
+    !isStringArray(result.required_skills) ||
     !isStringArray(result.skill_gaps) ||
     !validCareerPath
   ) {
@@ -509,6 +530,7 @@ ${JSON.stringify(missingSkills)}
           phase.recommended_courses_or_search_keywords
         )
     );
+
   const validProjects =
     Array.isArray(result.recommended_projects) &&
     result.recommended_projects.length >= 1 &&

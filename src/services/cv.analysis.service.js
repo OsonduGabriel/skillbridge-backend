@@ -17,7 +17,6 @@ import {
 import { analyzeCVWithAI } from "./ai.service.js";
 
 // Extract text from an uploaded CV.
-
 const extractTextFromCV = async (fileBuffer, fileName, fileType) => {
   const extension = path.extname(fileName).toLowerCase();
 
@@ -34,7 +33,11 @@ const extractTextFromCV = async (fileBuffer, fileName, fileType) => {
     const extractedPages = [];
 
     try {
-      for (let pageNumber = 1; pageNumber <= pdfDocument.numPages; pageNumber++) {
+      for (
+        let pageNumber = 1;
+        pageNumber <= pdfDocument.numPages;
+        pageNumber++
+      ) {
         const page = await pdfDocument.getPage(pageNumber);
         const textContent = await page.getTextContent();
 
@@ -51,6 +54,7 @@ const extractTextFromCV = async (fileBuffer, fileName, fileType) => {
       await loadingTask.destroy();
     }
   }
+
   // Extract text from DOCX.
   if (
     fileType ===
@@ -77,8 +81,7 @@ const extractTextFromCV = async (fileBuffer, fileName, fileType) => {
   }
 
   throw new Error("Unsupported CV file type.");
-};
-
+}
 
 // Remove personally identifiable information from extracted CV text.
 const sanitizeCVText = (extractedText) => {
@@ -175,16 +178,16 @@ const processCVAnalysis = async ({
   console.log("[CV ANALYSIS] R2 retrieval completed");
 
   // Step 2: Convert the R2 object into a Node.js Buffer.
-if (!cvObject.Body) {
-  throw new Error("CV file content is missing from R2 storage.");
-}
+  if (!cvObject.Body) {
+    throw new Error("CV file content is missing from R2 storage.");
+  }
 
-const fileBuffer = Buffer.from(
-  await cvObject.Body.transformToByteArray()
-);
+  const fileBuffer = Buffer.from(
+    await cvObject.Body.transformToByteArray()
+  );
 
   // Step 3: Extract text from the CV.
-  console.log("[CV ANALYSIS] Starting PDF text extraction");
+  console.log("[CV ANALYSIS] Starting CV text extraction");
 
   const extractedText = await extractTextFromCV(
     fileBuffer,
@@ -198,7 +201,7 @@ const fileBuffer = Buffer.from(
     throw error;
   }
 
-  console.log("[CV ANALYSIS] PDF text extraction completed", {
+  console.log("[CV ANALYSIS] CV text extraction completed", {
     textLength: extractedText.length,
   });
 
@@ -276,7 +279,7 @@ const fileBuffer = Buffer.from(
       cv.userId,
       {
         currentSkills: result.identified_skills,
-        requiredSkills: [],
+        requiredSkills: result.required_skills,
         missingSkills: result.skill_gaps,
         analysisResult: result,
       }
