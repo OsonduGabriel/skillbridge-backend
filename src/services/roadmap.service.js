@@ -62,9 +62,12 @@ const assertSkillBelongsToGap = async (userId, skillGapId, skill) => {
       .filter((item) => typeof item === "string")
       .map((item) => item.toLowerCase())
     : [];
-  if (!missingSkills.includes(skill)) {
-    throw httpError(422, "Task skill must be in the linked skill gap's missingSkills");
-  }
+if (!missingSkills.includes(skill.trim().toLowerCase())) {
+  throw httpError(
+    422,
+    "Task skill must be in the linked skill gap's missingSkills"
+  );
+}
 };
 
 const assertTaskValues = (values) => {
@@ -87,12 +90,31 @@ const assertTaskValues = (values) => {
 export const generateRoadmap = async (userId, skillGapId) => {
   const skillGap = await getOwnedSkillGap(userId, skillGapId);
 
-  const aiResult = await generateRoadmapWithAI({
-    currentSkills: skillGap.currentSkills || [],
-    missingSkills: skillGap.missingSkills || [],
-    targetRole: skillGap.targetJobTitle.slice(0, 200),
-    primaryGoal: "Career development",
-  });
+if (
+  typeof skillGap.targetJobTitle !== "string" ||
+  !skillGap.targetJobTitle.trim()
+) {
+  throw httpError(422, "The skill-gap record has no valid target role");
+}
+
+const aiResult = await generateRoadmapWithAI({
+  currentSkills: skillGap.currentSkills || [],
+  missingSkills: skillGap.missingSkills || [],
+  targetRole: skillGap.targetJobTitle.slice(0, 200),
+  primaryGoal: "Career development",
+});
+
+if (
+  !Array.isArray(aiResult?.learning_roadmap) ||
+  aiResult.learning_roadmap.length !== 3 ||
+  !Array.isArray(aiResult?.recommended_projects) ||
+  aiResult.recommended_projects.length === 0
+) {
+  throw httpError(
+    502,
+    "AI returned an incomplete roadmap. Please try again."
+  );
+}
 
   const missingSkills = (skillGap.missingSkills || [])
     .filter((skill) => typeof skill === "string")

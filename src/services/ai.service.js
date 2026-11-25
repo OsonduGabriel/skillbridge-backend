@@ -77,25 +77,54 @@ const generateJSONWithAI = async (
         responseMimeType: "application/json",
       },
     });
+  
   } catch (error) {
     // Log useful debugging information without exposing
     // the API key or the CV contents.
+    const upstreamStatus = Number(error.status || error.statusCode);
+
     console.error("Gemini API request failed:", {
       name: error.name,
       message: error.message,
-      status: error.status,
+      status: upstreamStatus || "unknown",
     });
 
-    // Preserve errors that already have an HTTP status.
-    if (error.statusCode) {
+    // Preserve errors that already have an application status.
+    if (error.statusCode && !error.status) {
       throw error;
     }
 
+    // Gemini may be temporarily unavailable or rate-limited.
+    if (
+      upstreamStatus === 429 ||
+      upstreamStatus === 503 ||
+      upstreamStatus === 504 ||
+      upstreamStatus === 408
+    ) {
+      throw createError(
+        "The AI service is temporarily busy. Please try again in a few minutes.",
+        503
+      );
+    }
+
+    // Other upstream server errors.
+    if (
+      upstreamStatus >= 500 &&
+      upstreamStatus <= 599
+    ) {
+      throw createError(
+        "The AI service is temporarily unavailable. Please try again later.",
+        503
+      );
+    }
+
+    // Unexpected provider errors.
     throw createError(
       "AI request failed. Please try again later.",
       502
     );
   }
+
 
   // Check whether Gemini returned a response.
   if (
@@ -114,18 +143,28 @@ const generateJSONWithAI = async (
   // Parse the JSON response separately so that JSON errors
   // can be distinguished from Gemini API request errors.
   try {
-    return JSON.parse(response.text);
-  } catch (error) {
-    console.error("Gemini returned invalid JSON:", {
-      name: error.name,
-      message: error.message,
-    });
+  const parsedResult = JSON.parse(response.text);
 
-    throw createError(
-      "AI returned an invalid response. Please try again.",
-      502
-    );
+  if (
+    !parsedResult ||
+    typeof parsedResult !== "object" ||
+    Array.isArray(parsedResult)
+  ) {
+    throw new Error("Expected a JSON object.");
   }
+
+  return parsedResult;
+} catch (error) {
+  console.error("Gemini returned invalid JSON:", {
+    name: error.name,
+    message: error.message,
+  });
+
+  throw createError(
+    "AI returned an invalid response. Please try again.",
+    502
+  );
+}
 };
 
 // =====================================================
@@ -546,20 +585,29 @@ ${JSON.stringify(missingSkills)}
     userPrompt
   );
 
-  const validRoadmap =
-    Array.isArray(result.learning_roadmap) &&
-    result.learning_roadmap.length === 3 &&
-    result.learning_roadmap.every(
-      (phase, index) =>
-        phase &&
-        phase.phase === ["Days 1-30", "Days 31-60", "Days 61-90"][index] &&
-        typeof phase.focus_skill === "string" &&
-        isStringArray(phase.learning_objectives) &&
-        isStringArray(phase.recommended_topics) &&
-        isStringArray(
-          phase.recommended_courses_or_search_keywords
-        )
-    );
+const validRoadmap =
+  Array.isArray(result.learning_roadmap) &&
+  result.learning_roadmap.length === 3 &&
+  result.learning_roadmap.every(
+    (phase, index) =>
+      phase &&
+      phase.phase === [
+        "Days 1-30",
+        "Days 31-60",
+        "Days 61-90",
+      ][index] &&
+      typeof phase.focus_skill === "string" &&
+      phase.focus_skill.trim().length > 0 &&
+      isStringArray(phase.learning_objectives) &&
+      isStringArray(phase.recommended_topics) &&
+      (
+        phase.learning_objectives.length > 0 ||
+        phase.recommended_topics.length > 0
+      ) &&
+      isStringArray(
+        phase.recommended_courses_or_search_keywords
+      )
+  );
 
   const validProjects =
     Array.isArray(result.recommended_projects) &&
