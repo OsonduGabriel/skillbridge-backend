@@ -88,20 +88,20 @@ const assertTaskValues = (values) => {
   }
 };
 
+
 export const generateRoadmap = async (userId, skillGapId) => {
   const skillGap = await getOwnedSkillGap(userId, skillGapId);
 
-  // Check whether a roadmap already exists for this skill gap.
+  // 1. Check for an existing roadmap before calling Gemini.
   const existingRoadmap = await Roadmap.findOne({
     where: { userId, skillGapId },
-    order: [["createdAt", "DESC"]],
   });
 
-  // Return the existing roadmap instead of generating another one.
   if (existingRoadmap) {
     return getRoadmap(userId, existingRoadmap.id);
   }
 
+  // 2. Validate the target role.
   if (
     typeof skillGap.targetJobTitle !== "string" ||
     !skillGap.targetJobTitle.trim()
@@ -109,6 +109,7 @@ export const generateRoadmap = async (userId, skillGapId) => {
     throw httpError(422, "The skill-gap record has no valid target role");
   }
 
+  // 3. Generate the roadmap using Gemini.
   const aiResult = await generateRoadmapWithAI({
     currentSkills: skillGap.currentSkills || [],
     missingSkills: skillGap.missingSkills || [],
@@ -128,6 +129,7 @@ export const generateRoadmap = async (userId, skillGapId) => {
     );
   }
 
+  // 4. Prepare the missing skills.
   const missingSkills = (skillGap.missingSkills || [])
     .filter((skill) => typeof skill === "string")
     .map((skill) => skill.toLowerCase());
@@ -142,6 +144,7 @@ export const generateRoadmap = async (userId, skillGapId) => {
     );
   };
 
+  // 5. Convert the AI response into roadmap tasks.
   const tasks = [];
   const positions = { 30: 0, 60: 0, 90: 0 };
 
@@ -208,47 +211,57 @@ export const generateRoadmap = async (userId, skillGapId) => {
     );
   }
 
-  const roadmap = await sequelize.transaction(async (transaction) => {
-    // Check again before creating the roadmap.
-    const existing = await Roadmap.findOne({
-      where: { userId, skillGapId },
-      transaction,
-      lock: transaction.LOCK.UPDATE,
+  // 6. Create the roadmap and its tasks in one transaction.
+  try {
+    const roadmap = await sequelize.transaction(async (transaction) => {
+      const createdRoadmap = await Roadmap.create(
+        {
+          userId,
+          skillGapId,
+          title: `90-Day ${skillGap.targetJobTitle} Learning Roadmap`.slice(
+            0,
+            200
+          ),
+          targetRole: skillGap.targetJobTitle,
+          summary: `A personalized 90-day learning plan to develop ${missingSkills.join(", ")} for the ${skillGap.targetJobTitle} role.`,
+          status: "draft",
+          generatedBy: "ai",
+        },
+        { transaction }
+      );
+
+      await RoadmapTask.bulkCreate(
+        tasks.map((task) => ({
+          ...task,
+          roadmapId: createdRoadmap.id,
+        })),
+        { transaction }
+      );
+
+      return createdRoadmap;
     });
 
-    if (existing) {
-      return existing;
+    return getRoadmap(userId, roadmap.id);
+
+  } catch (error) {
+    // 7. Handle simultaneous requests.
+    if (
+      error.name === "SequelizeUniqueConstraintError" ||
+      error.original?.code === "23505"
+    ) {
+      const existingRoadmap = await Roadmap.findOne({
+        where: { userId, skillGapId },
+      });
+
+      if (existingRoadmap) {
+        return getRoadmap(userId, existingRoadmap.id);
+      }
     }
 
-    const createdRoadmap = await Roadmap.create(
-      {
-        userId,
-        skillGapId,
-        title: `90-Day ${skillGap.targetJobTitle} Learning Roadmap`.slice(
-          0,
-          200
-        ),
-        targetRole: skillGap.targetJobTitle,
-        summary: `A personalized 90-day learning plan to develop ${missingSkills.join(", ")} for the ${skillGap.targetJobTitle} role.`,
-        status: "draft",
-        generatedBy: "ai",
-      },
-      { transaction }
-    );
-
-    await RoadmapTask.bulkCreate(
-      tasks.map((task) => ({
-        ...task,
-        roadmapId: createdRoadmap.id,
-      })),
-      { transaction }
-    );
-
-    return createdRoadmap;
-  });
-
-  return getRoadmap(userId, roadmap.id);
+    throw error;
+  }
 };
+
 
 
 export const listRoadmaps = (userId) =>
