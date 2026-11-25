@@ -7,6 +7,7 @@ import { getCloudflareEnv } from "../utils/cloudflare-context.js";
 // =====================================================
 
 // Initialize Gemini using the API key from the environment.
+
 const getAIClient = () => {
   const apiKey =
     getCloudflareEnv()?.GEMINI_API_KEY ||
@@ -26,11 +27,17 @@ const getAIClient = () => {
     httpOptions: {
       timeout: 20000,
       retryOptions: {
-        attempts: 1,
+        attempts: 4,
+        initialDelay: 1,
+        maxDelay: 8,
+        expBase: 2,
+        jitter: 1,
+        httpStatusCodes: [408, 429, 500, 502, 503, 504],
       },
     },
   });
 };
+
 
 // Create an error with an HTTP status code.
 const createError = (message, statusCode) => {
