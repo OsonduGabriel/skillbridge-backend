@@ -1,4 +1,5 @@
-import { DataTypes } from "sequelize";
+
+import { DataTypes, Op } from "sequelize";
 import sequelize from "../config/database.js";
 
 export const ROADMAP_STATUSES = [
@@ -7,6 +8,7 @@ export const ROADMAP_STATUSES = [
   "completed",
   "archived",
 ];
+
 export const ROADMAP_GENERATORS = ["ai", "manual"];
 
 const Roadmap = sequelize.define(
@@ -17,23 +19,50 @@ const Roadmap = sequelize.define(
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
-    userId: { type: DataTypes.UUID, allowNull: false },
-    skillGapId: { type: DataTypes.UUID, allowNull: true },
-    title: { type: DataTypes.STRING(200), allowNull: false },
-    targetRole: { type: DataTypes.STRING(200), allowNull: false },
-    summary: { type: DataTypes.TEXT, allowNull: false },
+
+    userId: {
+      type: DataTypes.UUID,
+      allowNull: false,
+    },
+
+    skillGapId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+    },
+
+    title: {
+      type: DataTypes.STRING(200),
+      allowNull: false,
+    },
+
+    targetRole: {
+      type: DataTypes.STRING(200),
+      allowNull: false,
+    },
+
+    summary: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+    },
+
     status: {
       type: DataTypes.STRING(20),
       allowNull: false,
       defaultValue: "draft",
-      validate: { isIn: [ROADMAP_STATUSES] },
+      validate: {
+        isIn: [ROADMAP_STATUSES],
+      },
     },
+
     generatedBy: {
       type: DataTypes.STRING(20),
       allowNull: false,
       defaultValue: "manual",
-      validate: { isIn: [ROADMAP_GENERATORS] },
+      validate: {
+        isIn: [ROADMAP_GENERATORS],
+      },
     },
+
     startDate: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -43,8 +72,26 @@ const Roadmap = sequelize.define(
   {
     tableName: "roadmaps",
     timestamps: true,
-    indexes: [{ fields: ["userId"] }, { fields: ["skillGapId"] }],
-  },
+
+    indexes: [
+      {
+        fields: ["userId"],
+      },
+      {
+        fields: ["skillGapId"],
+      },
+      {
+        unique: true,
+        name: "unique_user_skillgap_roadmap",
+        fields: ["userId", "skillGapId"],
+        where: {
+          skillGapId: {
+            [Op.ne]: null,
+          },
+        },
+      },
+    ],
+  }
 );
 
 export default Roadmap;

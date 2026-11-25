@@ -87,34 +87,46 @@ const assertTaskValues = (values) => {
     throw httpError(422, "Invalid task status");
   }
 };
+
 export const generateRoadmap = async (userId, skillGapId) => {
   const skillGap = await getOwnedSkillGap(userId, skillGapId);
 
-if (
-  typeof skillGap.targetJobTitle !== "string" ||
-  !skillGap.targetJobTitle.trim()
-) {
-  throw httpError(422, "The skill-gap record has no valid target role");
-}
+  // Check whether a roadmap already exists for this skill gap.
+  const existingRoadmap = await Roadmap.findOne({
+    where: { userId, skillGapId },
+    order: [["createdAt", "DESC"]],
+  });
 
-const aiResult = await generateRoadmapWithAI({
-  currentSkills: skillGap.currentSkills || [],
-  missingSkills: skillGap.missingSkills || [],
-  targetRole: skillGap.targetJobTitle.slice(0, 200),
-  primaryGoal: "Career development",
-});
+  // Return the existing roadmap instead of generating another one.
+  if (existingRoadmap) {
+    return getRoadmap(userId, existingRoadmap.id);
+  }
 
-if (
-  !Array.isArray(aiResult?.learning_roadmap) ||
-  aiResult.learning_roadmap.length !== 3 ||
-  !Array.isArray(aiResult?.recommended_projects) ||
-  aiResult.recommended_projects.length === 0
-) {
-  throw httpError(
-    502,
-    "AI returned an incomplete roadmap. Please try again."
-  );
-}
+  if (
+    typeof skillGap.targetJobTitle !== "string" ||
+    !skillGap.targetJobTitle.trim()
+  ) {
+    throw httpError(422, "The skill-gap record has no valid target role");
+  }
+
+  const aiResult = await generateRoadmapWithAI({
+    currentSkills: skillGap.currentSkills || [],
+    missingSkills: skillGap.missingSkills || [],
+    targetRole: skillGap.targetJobTitle.slice(0, 200),
+    primaryGoal: "Career development",
+  });
+
+  if (
+    !Array.isArray(aiResult?.learning_roadmap) ||
+    aiResult.learning_roadmap.length !== 3 ||
+    !Array.isArray(aiResult?.recommended_projects) ||
+    aiResult.recommended_projects.length === 0
+  ) {
+    throw httpError(
+      502,
+      "AI returned an incomplete roadmap. Please try again."
+    );
+  }
 
   const missingSkills = (skillGap.missingSkills || [])
     .filter((skill) => typeof skill === "string")
@@ -125,7 +137,7 @@ if (
 
     return (
       missingSkills.find(
-        (skill) => skill === candidate.trim().toLowerCase(),
+        (skill) => skill === candidate.trim().toLowerCase()
       ) || null
     );
   };
@@ -192,25 +204,36 @@ if (
   if (tasks.length === 0) {
     throw httpError(
       502,
-      "AI did not generate any usable roadmap tasks. Please try again.",
+      "AI did not generate any usable roadmap tasks. Please try again."
     );
   }
 
   const roadmap = await sequelize.transaction(async (transaction) => {
+    // Check again before creating the roadmap.
+    const existing = await Roadmap.findOne({
+      where: { userId, skillGapId },
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+
+    if (existing) {
+      return existing;
+    }
+
     const createdRoadmap = await Roadmap.create(
       {
         userId,
         skillGapId,
         title: `90-Day ${skillGap.targetJobTitle} Learning Roadmap`.slice(
           0,
-          200,
+          200
         ),
         targetRole: skillGap.targetJobTitle,
         summary: `A personalized 90-day learning plan to develop ${missingSkills.join(", ")} for the ${skillGap.targetJobTitle} role.`,
         status: "draft",
         generatedBy: "ai",
       },
-      { transaction },
+      { transaction }
     );
 
     await RoadmapTask.bulkCreate(
@@ -218,7 +241,7 @@ if (
         ...task,
         roadmapId: createdRoadmap.id,
       })),
-      { transaction },
+      { transaction }
     );
 
     return createdRoadmap;
@@ -226,6 +249,7 @@ if (
 
   return getRoadmap(userId, roadmap.id);
 };
+
 
 export const listRoadmaps = (userId) =>
   Roadmap.findAll({
