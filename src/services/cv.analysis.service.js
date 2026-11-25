@@ -3,6 +3,7 @@
  * Extract text from CVs, sanitize personal information,
  * and save CV analysis results in the database.
  */
+
 import path from "path";
 import mammoth from "mammoth";
 import { getCVFromR2 } from "./cv-storage.service.js";
@@ -13,39 +14,58 @@ import {
   completeSkillGapAnalysis,
   failSkillGapAnalysis,
 } from "./skillgap.service.js";
-
 import { analyzeCVWithAI } from "./ai.service.js";
 
 // =====================================================
 // 1. SKILL NORMALIZATION
 // =====================================================
 
-// Map common variations of skill names to standard names.
+// Map equivalent skill names to one canonical comparison key.
 const SKILL_ALIASES = {
-  express: "Express.js",
-  expressjs: "Express.js",
+  express: "expressjs",
+  expressjs: "expressjs",
 
-  react: "React.js",
-  reactjs: "React.js",
+  react: "reactjs",
+  reactjs: "reactjs",
 
-  nodejs: "Node.js",
+  node: "nodejs",
+  nodejs: "nodejs",
 
-  postgres: "PostgreSQL",
-  postgresql: "PostgreSQL",
+  postgres: "postgresql",
+  postgresql: "postgresql",
 
-  js: "JavaScript",
-  javascript: "JavaScript",
+  js: "javascript",
+  javascript: "javascript",
+
+  html5: "html",
+  html: "html",
+
+  css3: "css",
+  css: "css",
 };
 
-// Generate a consistent comparison key for a skill.
+// Use consistent display names for common technologies.
+const CANONICAL_SKILL_LABELS = {
+  expressjs: "Express.js",
+  reactjs: "React.js",
+  nodejs: "Node.js",
+  postgresql: "PostgreSQL",
+  javascript: "JavaScript",
+  html: "HTML",
+  css: "CSS",
+};
+
+// Generate a normalized key from a skill name.
 const getSkillKey = (skill) => {
-  return skill
+  const normalized = skill
     .trim()
     .toLowerCase()
-    .replace(/[^a-z0-9]/g, "");
+    .replace(/[^a-z0-9+#]/g, "");
+
+  return SKILL_ALIASES[normalized] || normalized;
 };
 
-// Standardize skill names and remove duplicates.
+// Standardize skill names and remove equivalent duplicates.
 const normalizeSkillNames = (skills = []) => {
   const uniqueSkills = new Map();
 
@@ -58,21 +78,23 @@ const normalizeSkillNames = (skills = []) => {
     }
 
     const trimmedSkill = skill.trim();
-    const key = getSkillKey(trimmedSkill);
+    const canonicalKey = getSkillKey(trimmedSkill);
 
     const displayName =
-      SKILL_ALIASES[key] || trimmedSkill;
+      CANONICAL_SKILL_LABELS[canonicalKey] ||
+      trimmedSkill;
 
-    // Keep only the first occurrence of each skill.
-    if (!uniqueSkills.has(key)) {
-      uniqueSkills.set(key, displayName);
+    // Use the canonical key, not the original skill name.
+    // This makes Express and Express.js the same Map entry.
+    if (!uniqueSkills.has(canonicalKey)) {
+      uniqueSkills.set(canonicalKey, displayName);
     }
   }
 
   return Array.from(uniqueSkills.values());
 };
 
-// Calculate missing skills by comparing normalized names.
+// Calculate missing skills using canonical comparison keys.
 const calculateMissingSkills = (
   currentSkills,
   requiredSkills
@@ -90,7 +112,6 @@ const calculateMissingSkills = (
 // 2. CV TEXT EXTRACTION
 // =====================================================
 
-// Extract text from an uploaded CV.
 const extractTextFromCV = async (
   fileBuffer,
   fileName,
@@ -98,8 +119,11 @@ const extractTextFromCV = async (
 ) => {
   const extension = path.extname(fileName).toLowerCase();
 
-  // Extract text from PDF using the Cloudflare-compatible PDF.js bundle.
-  if (fileType === "application/pdf" || extension === ".pdf") {
+  // Extract text from PDF.
+  if (
+    fileType === "application/pdf" ||
+    extension === ".pdf"
+  ) {
     const { getDocument } = await import("pdfjs-serverless");
 
     const loadingTask = getDocument({
@@ -136,7 +160,7 @@ const extractTextFromCV = async (
   // Extract text from DOCX.
   if (
     fileType ===
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
     extension === ".docx"
   ) {
     const result = await mammoth.extractRawText({
@@ -147,14 +171,20 @@ const extractTextFromCV = async (
   }
 
   // DOC extraction is not currently supported.
-  if (fileType === "application/msword" || extension === ".doc") {
+  if (
+    fileType === "application/msword" ||
+    extension === ".doc"
+  ) {
     throw new Error(
       "DOC files are accepted for upload, but text extraction is not supported yet."
     );
   }
 
   // Extract plain text.
-  if (fileType === "text/plain" || extension === ".txt") {
+  if (
+    fileType === "text/plain" ||
+    extension === ".txt"
+  ) {
     return fileBuffer.toString("utf-8");
   }
 
@@ -165,12 +195,10 @@ const extractTextFromCV = async (
 // 3. CV SANITIZATION AND DATABASE OPERATIONS
 // =====================================================
 
-// Remove personally identifiable information from extracted CV text.
 const sanitizeCVText = (extractedText) => {
   return sanitizePII(extractedText);
 };
 
-// Save the extracted and sanitized text in the database.
 const saveExtractedText = async ({
   cvId,
   targetJobTitle,
@@ -193,7 +221,6 @@ const saveExtractedText = async ({
   return analysis;
 };
 
-// Get the latest analysis for a particular CV.
 const getCVAnalysis = async (cvId) => {
   const analysis = await CVAnalysis.findOne({
     where: { cvId },
@@ -203,7 +230,6 @@ const getCVAnalysis = async (cvId) => {
   return analysis;
 };
 
-// Get the complete analysis history for a particular CV.
 const getCVAnalysisHistory = async (cvId) => {
   const analyses = await CVAnalysis.findAll({
     where: { cvId },
@@ -213,7 +239,6 @@ const getCVAnalysisHistory = async (cvId) => {
   return analyses;
 };
 
-// Save the AI analysis result in the database.
 const saveAIAnalysisResult = async (
   analysisId,
   analysisResult
@@ -235,7 +260,6 @@ const saveAIAnalysisResult = async (
 // 4. PROCESS CV ANALYSIS
 // =====================================================
 
-// Process a CV and save its analysis and SkillGap records.
 const processCVAnalysis = async ({
   cv,
   targetJobTitle,
@@ -253,7 +277,7 @@ const processCVAnalysis = async ({
     throw error;
   }
 
-  // Step 1: Retrieve the uploaded CV from Cloudflare R2.
+  // Step 1: Retrieve the uploaded CV from R2.
   console.log("[CV ANALYSIS] Starting R2 retrieval");
 
   const cvObject = await getCVFromR2(cv.filePath);
@@ -266,7 +290,7 @@ const processCVAnalysis = async ({
 
   console.log("[CV ANALYSIS] R2 retrieval completed");
 
-  // Step 2: Convert the R2 object into a Node.js Buffer.
+  // Step 2: Convert the R2 object into a Buffer.
   if (!cvObject.Body) {
     throw new Error("CV file content is missing from R2 storage.");
   }
@@ -285,7 +309,9 @@ const processCVAnalysis = async ({
   );
 
   if (!extractedText || !extractedText.trim()) {
-    const error = new Error("No readable text was found in the CV.");
+    const error = new Error(
+      "No readable text was found in the CV."
+    );
     error.statusCode = 400;
     throw error;
   }
@@ -343,10 +369,12 @@ const processCVAnalysis = async ({
     const result = aiResponse.analysis;
 
     if (!result) {
-      throw new Error("The AI service returned no analysis result.");
+      throw new Error(
+        "The AI service returned no analysis result."
+      );
     }
 
-    // Step 8: Normalize skills and remove duplicates.
+    // Step 8: Normalize current and required skills.
     console.log("[CV ANALYSIS] Normalizing skills");
 
     const currentSkills = normalizeSkillNames(
@@ -358,17 +386,21 @@ const processCVAnalysis = async ({
     );
 
     // Step 9: Calculate missing skills on the backend.
-    // This prevents equivalent skill names from being
-    // incorrectly classified as missing.
+    // The AI-generated skill_gaps array is not trusted as
+    // the final source of truth.
     const missingSkills = calculateMissingSkills(
       currentSkills,
       requiredSkills
     );
 
-    // Update the AI result to keep all saved data consistent.
-    result.identified_skills = currentSkills;
-    result.required_skills = requiredSkills;
-    result.skill_gaps = missingSkills;
+    // Update the analysis result so the CVAnalysis record
+    // and SkillGap record contain the same normalized data.
+    const normalizedAnalysisResult = {
+      ...result,
+      identified_skills: currentSkills,
+      required_skills: requiredSkills,
+      skill_gaps: missingSkills,
+    };
 
     console.log("[CV ANALYSIS] Skill comparison completed", {
       currentSkills: currentSkills.length,
@@ -376,21 +408,24 @@ const processCVAnalysis = async ({
       missingSkills: missingSkills.length,
     });
 
-    // Step 10: Save the corrected AI analysis result.
+    // Step 10: Save the normalized AI analysis result.
     console.log("[CV ANALYSIS] Saving AI analysis result");
 
     const savedAnalysis = await saveAIAnalysisResult(
       analysis.id,
-      result
+      normalizedAnalysisResult
     );
 
     if (!savedAnalysis) {
-      throw new Error("Could not save the CV analysis result.");
+      throw new Error(
+        "Could not save the CV analysis result."
+      );
     }
 
     console.log("[CV ANALYSIS] AI analysis result saved");
 
     // Step 11: Complete the SkillGap record.
+    // The SkillGap service also verifies the missing skills.
     console.log("[CV ANALYSIS] Completing SkillGap analysis");
 
     const completedSkillGap = await completeSkillGapAnalysis(
@@ -400,17 +435,18 @@ const processCVAnalysis = async ({
         currentSkills,
         requiredSkills,
         missingSkills,
-        analysisResult: result,
+        analysisResult: normalizedAnalysisResult,
       }
     );
 
     if (!completedSkillGap) {
-      throw new Error("Could not save the SkillGap analysis result.");
+      throw new Error(
+        "Could not save the SkillGap analysis result."
+      );
     }
 
     console.log("[CV ANALYSIS] SkillGap analysis completed");
 
-    // Return both saved records to the controller.
     return {
       analysis: savedAnalysis,
       skillGap: completedSkillGap,
@@ -419,12 +455,13 @@ const processCVAnalysis = async ({
   } catch (error) {
     console.error("[CV ANALYSIS] Processing failed:", {
       message: error.message,
-      status: error.status,
+      status: error.statusCode || error.status,
     });
 
     // Mark the SkillGap record as failed if processing fails.
     try {
       await failSkillGapAnalysis(skillGap.id, cv.userId);
+
       console.log("[CV ANALYSIS] SkillGap marked as failed");
     } catch (statusError) {
       console.error(
