@@ -16,8 +16,86 @@ import {
 
 import { analyzeCVWithAI } from "./ai.service.js";
 
+// =====================================================
+// 1. SKILL NORMALIZATION
+// =====================================================
+
+// Map common variations of skill names to standard names.
+const SKILL_ALIASES = {
+  express: "Express.js",
+  expressjs: "Express.js",
+
+  react: "React.js",
+  reactjs: "React.js",
+
+  nodejs: "Node.js",
+
+  postgres: "PostgreSQL",
+  postgresql: "PostgreSQL",
+
+  js: "JavaScript",
+  javascript: "JavaScript",
+};
+
+// Generate a consistent comparison key for a skill.
+const getSkillKey = (skill) => {
+  return skill
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+};
+
+// Standardize skill names and remove duplicates.
+const normalizeSkillNames = (skills = []) => {
+  const uniqueSkills = new Map();
+
+  for (const skill of skills) {
+    if (
+      typeof skill !== "string" ||
+      !skill.trim()
+    ) {
+      continue;
+    }
+
+    const trimmedSkill = skill.trim();
+    const key = getSkillKey(trimmedSkill);
+
+    const displayName =
+      SKILL_ALIASES[key] || trimmedSkill;
+
+    // Keep only the first occurrence of each skill.
+    if (!uniqueSkills.has(key)) {
+      uniqueSkills.set(key, displayName);
+    }
+  }
+
+  return Array.from(uniqueSkills.values());
+};
+
+// Calculate missing skills by comparing normalized names.
+const calculateMissingSkills = (
+  currentSkills,
+  requiredSkills
+) => {
+  const currentSkillKeys = new Set(
+    currentSkills.map(getSkillKey)
+  );
+
+  return requiredSkills.filter(
+    (skill) => !currentSkillKeys.has(getSkillKey(skill))
+  );
+};
+
+// =====================================================
+// 2. CV TEXT EXTRACTION
+// =====================================================
+
 // Extract text from an uploaded CV.
-const extractTextFromCV = async (fileBuffer, fileName, fileType) => {
+const extractTextFromCV = async (
+  fileBuffer,
+  fileName,
+  fileType
+) => {
   const extension = path.extname(fileName).toLowerCase();
 
   // Extract text from PDF using the Cloudflare-compatible PDF.js bundle.
@@ -81,7 +159,11 @@ const extractTextFromCV = async (fileBuffer, fileName, fileType) => {
   }
 
   throw new Error("Unsupported CV file type.");
-}
+};
+
+// =====================================================
+// 3. CV SANITIZATION AND DATABASE OPERATIONS
+// =====================================================
 
 // Remove personally identifiable information from extracted CV text.
 const sanitizeCVText = (extractedText) => {
@@ -132,7 +214,10 @@ const getCVAnalysisHistory = async (cvId) => {
 };
 
 // Save the AI analysis result in the database.
-const saveAIAnalysisResult = async (analysisId, analysisResult) => {
+const saveAIAnalysisResult = async (
+  analysisId,
+  analysisResult
+) => {
   const analysis = await CVAnalysis.findByPk(analysisId);
 
   if (!analysis) {
@@ -145,6 +230,10 @@ const saveAIAnalysisResult = async (analysisId, analysisResult) => {
 
   return analysis;
 };
+
+// =====================================================
+// 4. PROCESS CV ANALYSIS
+// =====================================================
 
 // Process a CV and save its analysis and SkillGap records.
 const processCVAnalysis = async ({
@@ -257,7 +346,37 @@ const processCVAnalysis = async ({
       throw new Error("The AI service returned no analysis result.");
     }
 
-    // Step 8: Save the AI analysis result.
+    // Step 8: Normalize skills and remove duplicates.
+    console.log("[CV ANALYSIS] Normalizing skills");
+
+    const currentSkills = normalizeSkillNames(
+      result.identified_skills
+    );
+
+    const requiredSkills = normalizeSkillNames(
+      result.required_skills
+    );
+
+    // Step 9: Calculate missing skills on the backend.
+    // This prevents equivalent skill names from being
+    // incorrectly classified as missing.
+    const missingSkills = calculateMissingSkills(
+      currentSkills,
+      requiredSkills
+    );
+
+    // Update the AI result to keep all saved data consistent.
+    result.identified_skills = currentSkills;
+    result.required_skills = requiredSkills;
+    result.skill_gaps = missingSkills;
+
+    console.log("[CV ANALYSIS] Skill comparison completed", {
+      currentSkills: currentSkills.length,
+      requiredSkills: requiredSkills.length,
+      missingSkills: missingSkills.length,
+    });
+
+    // Step 10: Save the corrected AI analysis result.
     console.log("[CV ANALYSIS] Saving AI analysis result");
 
     const savedAnalysis = await saveAIAnalysisResult(
@@ -271,16 +390,16 @@ const processCVAnalysis = async ({
 
     console.log("[CV ANALYSIS] AI analysis result saved");
 
-    // Step 9: Complete the SkillGap record.
+    // Step 11: Complete the SkillGap record.
     console.log("[CV ANALYSIS] Completing SkillGap analysis");
 
     const completedSkillGap = await completeSkillGapAnalysis(
       skillGap.id,
       cv.userId,
       {
-        currentSkills: result.identified_skills,
-        requiredSkills: result.required_skills,
-        missingSkills: result.skill_gaps,
+        currentSkills,
+        requiredSkills,
+        missingSkills,
         analysisResult: result,
       }
     );
@@ -317,6 +436,10 @@ const processCVAnalysis = async ({
     throw error;
   }
 };
+
+// =====================================================
+// 5. EXPORT FUNCTIONS
+// =====================================================
 
 export {
   extractTextFromCV,

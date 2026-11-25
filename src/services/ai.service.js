@@ -204,25 +204,48 @@ Return only a valid JSON object with this exact structure:
 }
 
 Rules:
+
+GENERAL:
 - match_percentage must be a number from 0 to 100.
 - identified_skills, required_skills, and skill_gaps
-  must be arrays of strings.
-- identified_skills must contain only skills supported
-  by the resume.
-- required_skills must contain the important technical
-  and professional skills expected for the specified
-  target role.
-- Include both skills the candidate already demonstrates
-  and additional skills expected for the target role.
-- skill_gaps must contain skills from required_skills
-  that the candidate does not currently demonstrate
-  in the resume.
-- Do not include irrelevant skills in skill_gaps.
+  must be arrays of non-empty strings.
 - Preserve standard skill names and capitalization.
-- Do not claim that the user possesses skills without
-  evidence in the resume.
+- Avoid duplicate or equivalent skill names.
+
+IDENTIFIED SKILLS:
+- Include only skills supported by evidence in the resume.
+- Do not infer skills merely because they are commonly
+  associated with the candidate's target job title.
+- Distinguish between demonstrated skills and skills
+  that the candidate merely intends to learn.
+
+REQUIRED SKILLS:
+- Include important technical and professional skills
+  expected for the specified target role.
+- Include both skills the candidate already demonstrates
+  and additional skills expected for the role.
+- Prioritize skills relevant to the target role and industry.
+- Avoid unnecessary or unrelated skills.
+- Use standard and consistent names, such as "Express.js"
+  instead of sometimes using "Express".
+- Do not include duplicate or equivalent skills.
+
+SKILL GAPS:
+- Include only required skills that the candidate does
+  not demonstrate in the resume.
+- Every skill gap must correspond to a skill in required_skills.
+- Do not include skills already demonstrated in the resume.
+- Do not introduce unrelated learning recommendations.
+- The backend will independently calculate and verify
+  the final skill gaps.
+
+CAREER RECOMMENDATION:
+- match_percentage must reflect the candidate's actual
+  demonstrated skills against the target role.
 - action_plan must contain objects with phase, focus,
   and an array of action_items.
+- Recommend realistic learning activities that address
+  the identified skill gaps.
 `;
 
   const userPrompt = `
