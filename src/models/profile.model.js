@@ -1,3 +1,4 @@
+
 import { DataTypes } from "sequelize";
 import sequelize from "../config/database.js";
 
@@ -14,12 +15,6 @@ const Profile = sequelize.define(
       type: DataTypes.UUID,
       allowNull: false,
       unique: true,
-      references: {
-        model: "users",
-        key: "id",
-      },
-      onUpdate: "CASCADE",
-      onDelete: "CASCADE",
     },
 
     bio: {
@@ -54,6 +49,58 @@ const Profile = sequelize.define(
 
     careerGoal: {
       type: DataTypes.TEXT,
+      allowNull: true,
+    },
+
+    // Career information from the profile survey
+    targetJobTitle: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+
+    industryFocus: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+
+    careerStage: {
+      type: DataTypes.ENUM(
+        "Student",
+        "Entry",
+        "Mid",
+        "Senior",
+        "Pivot"
+      ),
+      allowNull: true,
+    },
+
+    primaryGoal: {
+      type: DataTypes.ENUM(
+        "CV Review",
+        "Gap Analysis",
+        "Roadmap"
+      ),
+      allowNull: true,
+    },
+
+    // Monthly salary expectations
+    payMin: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+
+    payMax: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+
+    // Preferred work arrangement
+    workMode: {
+      type: DataTypes.ENUM(
+        "remote",
+        "hybrid",
+        "onsite"
+      ),
       allowNull: true,
     },
   },
