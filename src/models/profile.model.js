@@ -17,6 +17,7 @@ const Profile = sequelize.define(
       unique: true,
     },
 
+    // Basic profile information
     bio: {
       type: DataTypes.TEXT,
       allowNull: true,
@@ -54,32 +55,22 @@ const Profile = sequelize.define(
 
     // Career information from the profile survey
     targetJobTitle: {
-      type: DataTypes.STRING,
+      type: DataTypes.STRING(255),
       allowNull: true,
     },
 
     industryFocus: {
-      type: DataTypes.STRING,
+      type: DataTypes.STRING(255),
       allowNull: true,
     },
 
     careerStage: {
-      type: DataTypes.ENUM(
-        "Student",
-        "Entry",
-        "Mid",
-        "Senior",
-        "Pivot"
-      ),
+      type: DataTypes.STRING(20),
       allowNull: true,
     },
 
     primaryGoal: {
-      type: DataTypes.ENUM(
-        "CV Review",
-        "Gap Analysis",
-        "Roadmap"
-      ),
+      type: DataTypes.STRING(30),
       allowNull: true,
     },
 
@@ -96,11 +87,7 @@ const Profile = sequelize.define(
 
     // Preferred work arrangement
     workMode: {
-      type: DataTypes.ENUM(
-        "remote",
-        "hybrid",
-        "onsite"
-      ),
+      type: DataTypes.STRING(20),
       allowNull: true,
     },
   },
