@@ -17,19 +17,37 @@ export const getMyProfile = async (req, res, next) => {
   }
 };
 
+
 export const updateMyProfile = async (req, res, next) => {
   try {
-    const profile = await updateProfile(req.user.id, req.body);
+    const validation = profileSchema.safeParse(req.body);
 
-    res.status(200).json({
+    if (!validation.success) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid profile data.",
+        errors: validation.error.issues.map((issue) => ({
+          field: issue.path.join("."),
+          message: issue.message,
+        })),
+      });
+    }
+
+    const profile = await updateProfile(
+      req.user.id,
+      validation.data
+    );
+
+    return res.status(200).json({
       success: true,
-      message: "Profile updated successfully",
+      message: "Profile updated successfully.",
       data: profile,
     });
   } catch (error) {
     next(error);
   }
 };
+
 
 // PUT /api/v1/users/me/profile
 export const upsertMyProfile = async (req, res) => {
