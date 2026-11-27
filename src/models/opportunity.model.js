@@ -10,14 +10,42 @@ export const OPPORTUNITY_TYPES = [
   "freelance",
 ];
 
-export const WORK_MODES = ["remote", "hybrid", "onsite"];
+export const WORK_MODES = [
+  "remote",
+  "hybrid",
+  "onsite",
+];
 
-export const OPPORTUNITY_STATUSES = ["active", "expired", "closed"];
+export const OPPORTUNITY_STATUSES = [
+  "active",
+  "expired",
+  "closed",
+];
 
-// seed = imported development/demo dataset
-// aggregated = fetched from an external opportunity provider
-// manual = created by an administrator
-export const OPPORTUNITY_SOURCES = ["manual", "aggregated", "seed"];
+export const OPPORTUNITY_SOURCES = [
+  "manual",
+  "aggregated",
+  "seed",
+];
+
+// Validate skills stored in JSONB fields.
+const validateSkillArray = (value) => {
+  if (!Array.isArray(value)) {
+    throw new Error("Skills must be an array.");
+  }
+
+  const invalidSkill = value.some(
+    (skill) =>
+      typeof skill !== "string" ||
+      !skill.trim(),
+  );
+
+  if (invalidSkill) {
+    throw new Error(
+      "Every skill must be a non-empty string.",
+    );
+  }
+};
 
 const Opportunity = sequelize.define(
   "Opportunity",
@@ -31,95 +59,150 @@ const Opportunity = sequelize.define(
     title: {
       type: DataTypes.STRING(200),
       allowNull: false,
+      validate: {
+        notEmpty: true,
+        len: [1, 200],
+      },
     },
 
     company: {
       type: DataTypes.STRING(150),
       allowNull: false,
+      validate: {
+        notEmpty: true,
+        len: [1, 150],
+      },
     },
 
     description: {
       type: DataTypes.TEXT,
       allowNull: false,
+      validate: {
+        notEmpty: true,
+      },
     },
 
     type: {
-      type: DataTypes.STRING(30),
+      type: DataTypes.ENUM(...OPPORTUNITY_TYPES),
       allowNull: false,
-      validate: {
-        isIn: [OPPORTUNITY_TYPES],
-      },
     },
 
     category: {
       type: DataTypes.STRING(100),
+      allowNull: true,
     },
 
+    // Physical or geographical location.
     location: {
       type: DataTypes.STRING(150),
+      allowNull: true,
     },
 
+    // Nullable because some listings have ambiguous work arrangements.
     workMode: {
-      type: DataTypes.STRING(20),
-      allowNull: false,
-      defaultValue: "onsite",
-      validate: {
-        isIn: [WORK_MODES],
-      },
+      type: DataTypes.ENUM(...WORK_MODES),
+      allowNull: true,
+      defaultValue: null,
     },
 
     applicationUrl: {
-      type: DataTypes.STRING(500),
+      type: DataTypes.TEXT,
       allowNull: false,
       validate: {
+        notEmpty: true,
         isUrl: true,
       },
     },
 
+    // Application deadline, not verification date.
     deadline: {
-      type: DataTypes.DATE,
+      type: DataTypes.DATEONLY,
+      allowNull: true,
+    },
+
+    // Original publication date from the dataset.
+    // Stored as text because the workbook provides month/year values.
+    postingDate: {
+      type: DataTypes.STRING(50),
+      allowNull: true,
+    },
+
+    // Original platform where the opportunity was listed.
+    sourcePlatform: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+    },
+
+    // Original listing page, separate from the application URL.
+    sourceUrl: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      validate: {
+        isUrl: true,
+      },
     },
 
     requiredSkills: {
       type: DataTypes.JSONB,
       allowNull: false,
       defaultValue: [],
+      validate: {
+        validateSkillArray,
+      },
     },
 
     preferredSkills: {
       type: DataTypes.JSONB,
       allowNull: false,
       defaultValue: [],
+      validate: {
+        validateSkillArray,
+      },
     },
 
+    // Availability status of the opportunity.
     status: {
-      type: DataTypes.STRING(20),
+      type: DataTypes.ENUM(...OPPORTUNITY_STATUSES),
       allowNull: false,
       defaultValue: "active",
-      validate: {
-        isIn: [OPPORTUNITY_STATUSES],
-      },
     },
 
+    // Original verification label supplied by the dataset.
+    // This does not mean SkillBridge independently verified the listing.
+    verificationStatus: {
+      type: DataTypes.STRING(50),
+      allowNull: true,
+    },
+
+    // Date on which the dataset says the listing was verified.
+    verificationDate: {
+      type: DataTypes.DATEONLY,
+      allowNull: true,
+    },
+
+    // Where the record entered SkillBridge.
     source: {
-      type: DataTypes.STRING(20),
+      type: DataTypes.ENUM(...OPPORTUNITY_SOURCES),
       allowNull: false,
       defaultValue: "manual",
-      validate: {
-        isIn: [OPPORTUNITY_SOURCES],
-      },
     },
 
+    // Dataset/provider name.
     sourceName: {
-      type: DataTypes.STRING(100),
+      type: DataTypes.STRING(150),
+      allowNull: true,
     },
 
+    // Unique identifier from the original dataset/provider.
     externalId: {
-      type: DataTypes.STRING(255),
+      type: DataTypes.STRING(150),
+      allowNull: true,
     },
 
+    // Used to track when an aggregated listing was last seen.
     lastSeenAt: {
       type: DataTypes.DATE,
+      allowNull: true,
     },
   },
   {
@@ -132,16 +215,56 @@ const Opportunity = sequelize.define(
         fields: ["sourceName", "externalId"],
       },
       {
-        using: "gin",
-        fields: ["requiredSkills"],
-      },
-      {
         fields: ["status", "deadline"],
       },
       {
         fields: ["type"],
       },
+      {
+        fields: ["source"],
+      },
+      {
+        fields: ["sourcePlatform"],
+      },
+      {
+        fields: ["sourceName", "lastSeenAt"],
+      },
+      {
+        using: "GIN",
+        fields: ["requiredSkills"],
+      },
+      {
+        using: "GIN",
+        fields: ["preferredSkills"],
+      },
     ],
+
+    validate: {
+      validateSourceIdentity() {
+        const hasSourceName = Boolean(
+          this.sourceName?.trim(),
+        );
+
+        const hasExternalId = Boolean(
+          this.externalId?.trim(),
+        );
+
+        if (hasSourceName !== hasExternalId) {
+          throw new Error(
+            "sourceName and externalId must either both be provided or both be null.",
+          );
+        }
+
+        if (
+          ["seed", "aggregated"].includes(this.source) &&
+          (!hasSourceName || !hasExternalId)
+        ) {
+          throw new Error(
+            "Seed and aggregated opportunities require sourceName and externalId.",
+          );
+        }
+      },
+    },
   },
 );
 
