@@ -5,26 +5,28 @@ import { fileURLToPath } from "url";
 import sequelize from "../src/config/database.js";
 import Opportunity from "../src/models/opportunity.model.js";
 
-// Path to the Excel file.
 const workbookPath = fileURLToPath(
-  new URL("../data/opportunities.xlsx", import.meta.url)
+  new URL("../data/opportunities.xlsx", import.meta.url),
 );
 
-// Dataset information.
 const SHEET_NAME = "50 Opportunities Dataset";
 const SOURCE_NAME = "AI Team Dataset";
 
-// Convert the skills in Excel into an array.
+// Convert comma-, semicolon- or newline-separated skills into an array.
 const parseSkills = (value) => {
   if (!value) return [];
 
-  return String(value)
-    .split(/[,;\n]/)
-    .map((skill) => skill.trim().toLowerCase())
-    .filter(Boolean);
+  return [
+    ...new Set(
+      String(value)
+        .split(/[,;\n]/)
+        .map((skill) => skill.trim().toLowerCase())
+        .filter(Boolean),
+    ),
+  ];
 };
 
-// Convert Excel opportunity types into values accepted by our model.
+// Convert workbook opportunity types into model-supported values.
 const normalizeType = (value) => {
   const type = String(value || "").trim().toLowerCase();
 
@@ -32,11 +34,17 @@ const normalizeType = (value) => {
     return "job";
   }
 
-  if (type.includes("internship") || type.includes("practical project")) {
+  if (
+    type.includes("internship") ||
+    type.includes("practical project")
+  ) {
     return "internship";
   }
 
-  if (type.includes("contract") || type.includes("project")) {
+  if (
+    type.includes("contract") ||
+    type.includes("project")
+  ) {
     return "freelance";
   }
 
@@ -60,60 +68,121 @@ const normalizeType = (value) => {
     return type;
   }
 
-  throw new Error(`Unsupported opportunity type: ${value}`);
+  throw new Error(
+    `Unsupported opportunity type: "${value}"`,
+  );
 };
 
-// Determine the work mode from the Excel location_type column.
+// Accept only recognized work modes.
 const normalizeWorkMode = (value) => {
-  const location = String(value || "").trim().toLowerCase();
+  const mode = String(value || "").trim().toLowerCase();
 
-  if (location.includes("remote")) {
+  if (mode.includes("remote")) {
     return "remote";
   }
 
-  if (location.includes("hybrid")) {
+  if (mode.includes("hybrid")) {
     return "hybrid";
   }
 
-  return "onsite";
+  if (
+    mode.includes("onsite") ||
+    mode.includes("on-site") ||
+    mode.includes("office")
+  ) {
+    return "onsite";
+  }
+
+  throw new Error(
+    `Unsupported opportunity work mode: "${value}"`,
+  );
 };
 
-// Convert verification status into our model's status values.
+// Normalize workbook verification statuses.
 const normalizeStatus = (value) => {
-  const status = String(value || "").trim().toLowerCase();
+  const status = String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ");
 
-  if (status.includes("active")) {
-    return "active";
+  const statusMap = {
+    active: "active",
+    "verified active": "active",
+
+    expired: "expired",
+    "verified expired": "expired",
+
+    closed: "closed",
+    "verified closed": "closed",
+
+    inactive: "closed",
+    "verified inactive": "closed",
+  };
+
+  const normalizedStatus = statusMap[status];
+
+  if (!normalizedStatus) {
+    throw new Error(
+      `Unsupported opportunity status: "${value}".`,
+    );
   }
 
-  if (status.includes("expired")) {
-    return "expired";
-  }
-
-  return "closed";
+  return normalizedStatus;
 };
 
-// Convert an Excel row into an Opportunity record.
+// Validate that an application link is a valid HTTP(S) URL.
+const validateApplicationUrl = (value, externalId) => {
+  const applicationUrl = String(value || "").trim();
+
+  try {
+    const url = new URL(applicationUrl);
+
+    if (!["http:", "https:"].includes(url.protocol)) {
+      throw new Error();
+    }
+  } catch {
+    throw new Error(
+      `Opportunity ${externalId} has an invalid application URL.`,
+    );
+  }
+
+  return applicationUrl;
+};
+
+// Convert a workbook row into the Opportunity model structure.
 const mapOpportunity = (row) => {
   const externalId = String(row.job_id || "").trim();
 
   if (!externalId) {
-    throw new Error("An opportunity is missing its job_id.");
+    throw new Error(
+      "An opportunity is missing its job_id.",
+    );
   }
 
   const title = String(row.job_title || "").trim();
   const company = String(row.company || "").trim();
+
   const description = String(
-    row.opportunity_description || ""
+    row.opportunity_description || "",
   ).trim();
 
-  const applicationUrl = String(row.apply_link || "").trim();
-
-  if (!title || !company || !description || !applicationUrl) {
+  if (!title || !company || !description) {
     throw new Error(
-      `Opportunity ${externalId} is missing a required field.`
+      `Opportunity ${externalId} is missing a required field.`,
     );
   }
+
+  if (title.length > 200 || company.length > 150) {
+    throw new Error(
+      `Opportunity ${externalId} has an overlong title or company name.`,
+    );
+  }
+
+  const applicationUrl = validateApplicationUrl(
+    row.apply_link,
+    externalId,
+  );
 
   return {
     title,
@@ -124,32 +193,38 @@ const mapOpportunity = (row) => {
 
     category: String(row.sector || "").trim() || null,
 
-    // The workbook has location_type but no separate location column.
-    location: null,
+    // Use a location column if the workbook contains one.
+    location:
+      String(
+        row.location ||
+        row.job_location ||
+        "",
+      ).trim() || null,
 
     workMode: normalizeWorkMode(row.location_type),
 
     applicationUrl,
 
-    // The workbook does not provide an application deadline.
+    // The current workbook does not provide a deadline.
     deadline: null,
 
     requiredSkills: parseSkills(row.required_skills),
 
-    // The workbook does not provide preferred skills.
     preferredSkills: [],
 
     status: normalizeStatus(row.verification_status),
 
-    source: "aggregated",
+    // Seed records are separate from live aggregated records.
+    source: "seed",
+
     sourceName: SOURCE_NAME,
     externalId,
 
-    lastSeenAt: new Date(),
+    lastSeenAt: null,
   };
 };
 
-// Main seeder function.
+// Main import function.
 const seedOpportunities = async () => {
   let transaction;
 
@@ -158,57 +233,66 @@ const seedOpportunities = async () => {
 
     await sequelize.authenticate();
 
-    console.log("Reading opportunities Excel workbook...");
+    console.log("Reading opportunity Excel workbook...");
 
-    // Read the Excel workbook using ExcelJS.
     const workbook = new ExcelJS.Workbook();
+
     await workbook.xlsx.readFile(workbookPath);
 
-    // Check that the expected worksheet exists.
     const worksheet = workbook.getWorksheet(SHEET_NAME);
 
     if (!worksheet) {
       throw new Error(
-        `Worksheet "${SHEET_NAME}" was not found in the Excel file.`
+        `Worksheet "${SHEET_NAME}" was not found.`,
       );
     }
 
-    // Read all worksheet rows as arrays.
+    // Read worksheet rows.
     const sheetRows = [];
 
-    worksheet.eachRow({ includeEmpty: true }, (row) => {
-      const values = [];
+    worksheet.eachRow(
+      { includeEmpty: true },
+      (row) => {
+        const values = [];
 
-      for (let column = 1; column <= worksheet.columnCount; column++) {
-        values.push(row.getCell(column).text ?? "");
-      }
+        for (
+          let column = 1;
+          column <= worksheet.columnCount;
+          column++
+        ) {
+          values.push(row.getCell(column).text ?? "");
+        }
 
-      sheetRows.push(values);
-    });
+        sheetRows.push(values);
+      },
+    );
 
-    // Find the actual header row using the job_id column.
-    const headerRowIndex = sheetRows.findIndex((row) =>
-      row.some(
-        (cell) => String(cell).trim().toLowerCase() === "job_id"
-      )
+    // Locate the header row.
+    const headerRowIndex = sheetRows.findIndex(
+      (row) =>
+        row.some(
+          (cell) =>
+            String(cell).trim().toLowerCase() === "job_id",
+        ),
     );
 
     if (headerRowIndex === -1) {
       throw new Error(
-        "Could not find the job_id column in the Excel file."
+        "Could not find the job_id column.",
       );
     }
 
-    // Extract and clean the column headers.
-    const headers = sheetRows[headerRowIndex].map((header) =>
-      String(header).trim()
+    const headers = sheetRows[headerRowIndex].map(
+      (header) => String(header).trim(),
     );
 
-    // Convert the remaining worksheet rows into objects.
+    // Convert worksheet rows into JavaScript objects.
     const rows = sheetRows
       .slice(headerRowIndex + 1)
       .filter((values) =>
-        values.some((value) => String(value).trim() !== "")
+        values.some(
+          (value) => String(value).trim() !== "",
+        ),
       )
       .map((values) => {
         const row = {};
@@ -222,36 +306,42 @@ const seedOpportunities = async () => {
         return row;
       });
 
-    console.log(`Found ${rows.length} opportunity records.`);
-
-    // Verify the expected number of records.
-    if (rows.length !== 50) {
+    if (!rows.length) {
       throw new Error(
-        `Expected 50 opportunities but found ${rows.length}.`
+        "The opportunity workbook contains no records.",
       );
     }
 
-    // Confirm that the first record was read correctly.
-    console.log("First opportunity:", rows[0]);
+    console.log(
+      `Found ${rows.length} opportunity records.`,
+    );
 
-    if (rows[0]?.job_id !== "OPP-2026-001") {
-      throw new Error("The first opportunity ID is incorrect.");
-    }
-
-    // Map all Excel records into our database structure.
+    // Validate and map all records before writing to the database.
     const opportunities = rows.map(mapOpportunity);
 
-    console.log("All opportunity records mapped successfully.");
+    // Prevent duplicate IDs inside the same workbook.
+    const externalIds = opportunities.map(
+      (opportunity) => opportunity.externalId,
+    );
+
+    if (new Set(externalIds).size !== externalIds.length) {
+      throw new Error(
+        "The workbook contains duplicate job_id values.",
+      );
+    }
+
+    console.log(
+      "All opportunity records passed validation.",
+    );
+
     console.log("Starting database import...");
 
-    // Start a transaction so the import can be rolled back if needed.
     transaction = await sequelize.transaction();
 
     let createdCount = 0;
     let updatedCount = 0;
 
     for (const opportunity of opportunities) {
-      // Check whether this opportunity already exists.
       const existingOpportunity = await Opportunity.findOne({
         where: {
           sourceName: opportunity.sourceName,
@@ -261,43 +351,43 @@ const seedOpportunities = async () => {
       });
 
       if (existingOpportunity) {
-        // Update an existing opportunity instead of creating a duplicate.
-        await existingOpportunity.update(opportunity, {
-          transaction,
-        });
+        await existingOpportunity.update(
+          opportunity,
+          { transaction },
+        );
 
         updatedCount++;
       } else {
-        // Create a new opportunity.
-        await Opportunity.create(opportunity, {
-          transaction,
-        });
+        await Opportunity.create(
+          opportunity,
+          { transaction },
+        );
 
         createdCount++;
       }
     }
 
-    // Save all changes to the database.
     await transaction.commit();
     transaction = null;
 
     console.log("-----------------------------------");
     console.log("Opportunity import completed!");
-    console.log(`Total records processed: ${opportunities.length}`);
-    console.log(`New opportunities created: ${createdCount}`);
-    console.log(`Existing opportunities updated: ${updatedCount}`);
+    console.log(`Total records: ${opportunities.length}`);
+    console.log(`Created: ${createdCount}`);
+    console.log(`Updated: ${updatedCount}`);
     console.log("-----------------------------------");
   } catch (error) {
-    // Undo database changes if anything goes wrong.
     if (transaction) {
       await transaction.rollback();
     }
 
-    console.error("Opportunity import failed:", error.message);
+    console.error(
+      "Opportunity import failed:",
+      error.message,
+    );
 
     process.exitCode = 1;
   } finally {
-    // Close the database connection.
     await sequelize.close();
   }
 };
