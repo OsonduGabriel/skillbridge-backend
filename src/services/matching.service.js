@@ -1,8 +1,9 @@
 
+import { Op } from "sequelize";
+
 import Matching from "../models/matching.model.js";
 import Opportunity from "../models/opportunity.model.js";
 import SkillGap from "../models/skillgap.model.js";
-import { runJobMatchingFromDatabase } from "./ai.service.js";
 
 // Create an error with an HTTP status code.
 const createError = (message, statusCode) => {
@@ -11,14 +12,39 @@ const createError = (message, statusCode) => {
   return error;
 };
 
-// Normalize skill names to make comparisons consistent.
-// Example: "Node.js" and " node.js " become "node.js".
+// Normalize skill names to handle common variations.
 const normalizeSkill = (skill) => {
-  return skill.trim().toLowerCase();
+  if (typeof skill !== "string") {
+    return "";
+  }
+
+  const normalized = skill
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9+#]/g, "");
+
+  const aliases = {
+    express: "expressjs",
+    expressjs: "expressjs",
+    react: "reactjs",
+    reactjs: "reactjs",
+    node: "nodejs",
+    nodejs: "nodejs",
+    postgres: "postgresql",
+    postgresql: "postgresql",
+    js: "javascript",
+    javascript: "javascript",
+    html5: "html",
+    html: "html",
+    css3: "css",
+    css: "css",
+  };
+
+  return aliases[normalized] || normalized;
 };
 
 // Validate and normalize a list of skills.
-const normalizeSkills = (skills) => {
+const normalizeSkills = (skills = []) => {
   if (!Array.isArray(skills)) {
     return [];
   }
@@ -26,11 +52,8 @@ const normalizeSkills = (skills) => {
   return [
     ...new Set(
       skills
-        .filter(
-          (skill) =>
-            typeof skill === "string" && skill.trim().length > 0
-        )
         .map(normalizeSkill)
+        .filter(Boolean)
     ),
   ];
 };
@@ -45,25 +68,31 @@ const calculateMatch = (userSkills, opportunity) => {
     opportunity.preferredSkills
   );
 
-  // Find required skills the user already possesses.
-  const matchedRequiredSkills = requiredSkills.filter((skill) =>
-    userSkills.includes(skill)
+  const candidateSkills = normalizeSkills(userSkills);
+
+  // Identify matched required skills.
+  const matchedRequiredSkills = requiredSkills.filter(
+    (skill) => candidateSkills.includes(skill)
   );
 
-  // Find preferred skills the user already possesses.
-  const matchedPreferredSkills = preferredSkills.filter((skill) =>
-    userSkills.includes(skill)
+  // Identify matched preferred skills.
+  const matchedPreferredSkills = preferredSkills.filter(
+    (skill) => candidateSkills.includes(skill)
   );
 
   // Identify missing required skills.
-  const missingSkills = requiredSkills.filter(
-    (skill) => !userSkills.includes(skill)
+  const missingRequiredSkills = requiredSkills.filter(
+    (skill) => !candidateSkills.includes(skill)
+  );
+
+  // Identify missing preferred skills.
+  const missingPreferredSkills = preferredSkills.filter(
+    (skill) => !candidateSkills.includes(skill)
   );
 
   let score = 0;
 
-  // Required skills carry 80% of the score when both
-  // required and preferred skills are available.
+  // Required skills carry 80% and preferred skills carry 20%.
   if (requiredSkills.length > 0 && preferredSkills.length > 0) {
     const requiredScore =
       (matchedRequiredSkills.length / requiredSkills.length) * 80;
@@ -73,16 +102,12 @@ const calculateMatch = (userSkills, opportunity) => {
 
     score = requiredScore + preferredScore;
   } else if (requiredSkills.length > 0) {
-    // If no preferred skills exist, use required skills alone.
     score =
       (matchedRequiredSkills.length / requiredSkills.length) * 100;
   } else if (preferredSkills.length > 0) {
-    // If no required skills exist, use preferred skills alone.
     score =
       (matchedPreferredSkills.length / preferredSkills.length) * 100;
   }
-
-  const matchPercentage = Math.round(score);
 
   const matchedSkills = [
     ...new Set([
@@ -91,13 +116,22 @@ const calculateMatch = (userSkills, opportunity) => {
     ]),
   ];
 
+  const missingSkills = [
+    ...new Set([
+      ...missingRequiredSkills,
+      ...missingPreferredSkills,
+    ]),
+  ];
+
+  const matchPercentage = Math.round(score);
+
   const explanation =
     `You match ${matchedRequiredSkills.length} of ` +
     `${requiredSkills.length} required skills and ` +
     `${matchedPreferredSkills.length} of ` +
     `${preferredSkills.length} preferred skills. ` +
-    (missingSkills.length > 0
-      ? `Skills to develop: ${missingSkills.join(", ")}.`
+    (missingRequiredSkills.length > 0
+      ? `Required skills to develop: ${missingRequiredSkills.join(", ")}.`
       : "You have all the listed required skills.");
 
   return {
@@ -108,9 +142,8 @@ const calculateMatch = (userSkills, opportunity) => {
   };
 };
 
-// Generate and save matching results for a user.
-const generateCareerMatches = async (userId) => {
-  // Get the user's latest completed SkillGap analysis.
+// Retrieve the user's latest completed skill-gap analysis.
+const getLatestSkillGap = async (userId) => {
   const skillGap = await SkillGap.findOne({
     where: {
       userId,
@@ -126,8 +159,46 @@ const generateCareerMatches = async (userId) => {
     );
   }
 
-  // Use the skills identified in the SkillGap record.
-  const userSkills = normalizeSkills(skillGap.currentSkills);
+  return skillGap;
+};
+
+// Retrieve active opportunities.
+const getActiveOpportunities = async () => {
+  return Opportunity.findAll({
+    where: {
+      status: "active",
+      [Op.or]: [
+        { deadline: null },
+        { deadline: { [Op.gte]: new Date() } },
+      ],
+    },
+  });
+};
+
+// Remove old completed matches for opportunities that are no longer
+// eligible for matching.
+const removeStaleMatches = async (userId, activeOpportunityIds) => {
+  const where = {
+    userId,
+    status: "completed",
+  };
+
+  if (activeOpportunityIds.length > 0) {
+    where.opportunityId = {
+      [Op.notIn]: activeOpportunityIds,
+    };
+  }
+
+  await Matching.destroy({ where });
+};
+
+// Generate and save deterministic career matches.
+export const generateCareerMatches = async (userId) => {
+  const skillGap = await getLatestSkillGap(userId);
+
+  const userSkills = normalizeSkills(
+    skillGap.currentSkills || []
+  );
 
   if (userSkills.length === 0) {
     throw createError(
@@ -136,12 +207,14 @@ const generateCareerMatches = async (userId) => {
     );
   }
 
-  // Retrieve currently active opportunities.
-  const opportunities = await Opportunity.findAll({
-    where: {
-      status: "active",
-    },
-  });
+  const opportunities = await getActiveOpportunities();
+
+  const activeOpportunityIds = opportunities.map(
+    (opportunity) => opportunity.id
+  );
+
+  // Remove matches that are no longer eligible.
+  await removeStaleMatches(userId, activeOpportunityIds);
 
   if (opportunities.length === 0) {
     return [];
@@ -151,14 +224,6 @@ const generateCareerMatches = async (userId) => {
 
   for (const opportunity of opportunities) {
     const match = calculateMatch(userSkills, opportunity);
-
-    // Find an existing match for this user and opportunity.
-    let savedMatch = await Matching.findOne({
-      where: {
-        userId,
-        opportunityId: opportunity.id,
-      },
-    });
 
     const matchData = {
       userId,
@@ -170,11 +235,17 @@ const generateCareerMatches = async (userId) => {
       status: "completed",
     };
 
-    // Update an existing result instead of creating duplicates.
-    if (savedMatch) {
+    // Update an existing match or create a new one.
+    const [savedMatch, created] = await Matching.findOrCreate({
+      where: {
+        userId,
+        opportunityId: opportunity.id,
+      },
+      defaults: matchData,
+    });
+
+    if (!created) {
       await savedMatch.update(matchData);
-    } else {
-      savedMatch = await Matching.create(matchData);
     }
 
     results.push({
@@ -192,7 +263,7 @@ const generateCareerMatches = async (userId) => {
 };
 
 // Retrieve previously saved matches for one user.
-const getUserCareerMatches = async (userId) => {
+export const getUserCareerMatches = async (userId) => {
   const matches = await Matching.findAll({
     where: {
       userId,
@@ -205,6 +276,10 @@ const getUserCareerMatches = async (userId) => {
         required: true,
         where: {
           status: "active",
+          [Op.or]: [
+            { deadline: null },
+            { deadline: { [Op.gte]: new Date() } },
+          ],
         },
       },
     ],
@@ -214,162 +289,13 @@ const getUserCareerMatches = async (userId) => {
   return matches;
 };
 
+// Retain the existing function name for compatibility with
+// controllers that call generateAIMatches.
+//
+// Match percentages and skill comparisons are calculated by the
+// deterministic matching algorithm, not generated by Gemini.
 export const generateAIMatches = async (userId) => {
-  // 1. Get the candidate's latest completed skill gap analysis
-  const skillGap = await SkillGap.findOne({
-    where: {
-      userId,
-      status: "completed",
-    },
-    order: [["createdAt", "DESC"]],
-  });
-
-  if (!skillGap) {
-    throw createError(
-      "Complete a CV skill gap analysis before generating job matches.",
-      404
-    );
-  }
-
-  // 2. Get the candidate's skills
-  const candidateProfile = {
-    targetRole: skillGap.targetJobTitle,
-    skills: skillGap.currentSkills || [],
-    seniorityLevel: skillGap.careerStage || "Entry",
-  };
-
-  // 3. Get active opportunities from the database
-  const activeJobs = await Opportunity.findAll({
-    where: {
-      status: "active",
-    },
-    attributes: [
-      "id",
-      "title",
-      "company",
-      "description",
-      "type",
-      "category",
-      "location",
-      "workMode",
-      "applicationUrl",
-      "requiredSkills",
-      "preferredSkills",
-    ],
-  });
-
-  if (activeJobs.length === 0) {
-    throw createError(
-      "There are currently no active opportunities available.",
-      404
-    );
-  }
-
-  // 4. Convert Sequelize records into plain objects for Gemini
-  const jobsForAI = activeJobs.map((job) => ({
-    job_id: job.id,
-    job_title: job.title,
-    company_name: job.company,
-    description: job.description,
-    opportunity_type: job.type,
-    category: job.category,
-    location: job.location,
-    work_mode: job.workMode,
-    required_skills: job.requiredSkills || [],
-    preferred_skills: job.preferredSkills || [],
-    apply_link: job.applicationUrl,
-  }));
-
-  // 5. Send candidate profile and opportunities to Gemini
-  const aiResult = await runJobMatchingFromDatabase(
-    candidateProfile,
-    jobsForAI
-  );
-
-  // 6. Match AI results against actual database opportunities.
-  // This prevents the AI from introducing unknown opportunity IDs.
-  const opportunityMap = new Map(
-    activeJobs.map((job) => [job.id, job])
-  );
-
-  const savedMatches = [];
-
-  for (const aiMatch of aiResult.matched_jobs) {
-    const opportunity = opportunityMap.get(aiMatch.job_id);
-
-    if (!opportunity) {
-      continue;
-    }
-
-    const percentage = Number(aiMatch.match_percentage);
-
-    if (
-      !Number.isFinite(percentage) ||
-      percentage < 0 ||
-      percentage > 100
-    ) {
-      continue;
-    }
-
-    const matchedSkills = Array.isArray(aiMatch.matching_skills)
-      ? aiMatch.matching_skills.filter(
-        (skill) => typeof skill === "string"
-      )
-      : [];
-
-    const missingSkills = Array.isArray(aiMatch.missing_skills)
-      ? aiMatch.missing_skills.filter(
-        (skill) => typeof skill === "string"
-      )
-      : [];
-
-    // 7. Save or update the user's match
-    const [matching] = await Matching.findOrCreate({
-      where: {
-        userId,
-        opportunityId: opportunity.id,
-      },
-      defaults: {
-        userId,
-        opportunityId: opportunity.id,
-        matchPercentage: Math.round(percentage),
-        matchedSkills,
-        missingSkills,
-        explanation: aiMatch.why_good_fit || "",
-        status: "completed",
-      },
-    });
-
-    if (matching) {
-      await matching.update({
-        matchPercentage: Math.round(percentage),
-        matchedSkills,
-        missingSkills,
-        explanation: aiMatch.why_good_fit || "",
-        status: "completed",
-      });
-    }
-
-    savedMatches.push(matching);
-  }
-
-  // 8. Return saved matches with their opportunity details
-  const matches = await Matching.findAll({
-    where: {
-      userId,
-      status: "completed",
-    },
-    include: [
-      {
-        model: Opportunity,
-        as: "opportunity",
-        where: {
-          status: "active",
-        },
-      },
-    ],
-    order: [["matchPercentage", "DESC"]],
-  });
+  const matches = await generateCareerMatches(userId);
 
   return {
     total_matches_found: matches.length,
@@ -379,6 +305,6 @@ export const generateAIMatches = async (userId) => {
 
 export {
   calculateMatch,
-  generateCareerMatches,
-  getUserCareerMatches,
+  normalizeSkill,
+  normalizeSkills,
 };

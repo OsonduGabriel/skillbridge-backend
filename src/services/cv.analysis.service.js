@@ -6,45 +6,45 @@
 
 import path from "path";
 import mammoth from "mammoth";
+
 import { getCVFromR2 } from "./cv-storage.service.js";
 import CVAnalysis from "../models/cv.analysis.model.js";
 import sanitizePII from "../utils/pii.sanitizer.js";
+
 import {
   createSkillGap,
   completeSkillGapAnalysis,
   failSkillGapAnalysis,
 } from "./skillgap.service.js";
-import { analyzeCVWithAI } from "./ai.service.js";
+
+import {
+  analyzeCVWithAI,
+  reviewCVWithAI,
+} from "./ai.service.js";
+
+import { generateRoadmap } from "./roadmap.service.js";
 
 // =====================================================
 // 1. SKILL NORMALIZATION
 // =====================================================
 
-// Map equivalent skill names to one canonical comparison key.
 const SKILL_ALIASES = {
   express: "expressjs",
   expressjs: "expressjs",
-
   react: "reactjs",
   reactjs: "reactjs",
-
   node: "nodejs",
   nodejs: "nodejs",
-
   postgres: "postgresql",
   postgresql: "postgresql",
-
   js: "javascript",
   javascript: "javascript",
-
   html5: "html",
   html: "html",
-
   css3: "css",
   css: "css",
 };
 
-// Use consistent display names for common technologies.
 const CANONICAL_SKILL_LABELS = {
   expressjs: "Express.js",
   reactjs: "React.js",
@@ -55,8 +55,11 @@ const CANONICAL_SKILL_LABELS = {
   css: "CSS",
 };
 
-// Generate a normalized key from a skill name.
 const getSkillKey = (skill) => {
+  if (typeof skill !== "string") {
+    return "";
+  }
+
   const normalized = skill
     .trim()
     .toLowerCase()
@@ -65,27 +68,28 @@ const getSkillKey = (skill) => {
   return SKILL_ALIASES[normalized] || normalized;
 };
 
-// Standardize skill names and remove equivalent duplicates.
 const normalizeSkillNames = (skills = []) => {
+  if (!Array.isArray(skills)) {
+    return [];
+  }
+
   const uniqueSkills = new Map();
 
   for (const skill of skills) {
-    if (
-      typeof skill !== "string" ||
-      !skill.trim()
-    ) {
+    if (typeof skill !== "string" || !skill.trim()) {
       continue;
     }
 
     const trimmedSkill = skill.trim();
     const canonicalKey = getSkillKey(trimmedSkill);
 
-    const displayName =
-      CANONICAL_SKILL_LABELS[canonicalKey] ||
-      trimmedSkill;
+    if (!canonicalKey) {
+      continue;
+    }
 
-    // Use the canonical key, not the original skill name.
-    // This makes Express and Express.js the same Map entry.
+    const displayName =
+      CANONICAL_SKILL_LABELS[canonicalKey] || trimmedSkill;
+
     if (!uniqueSkills.has(canonicalKey)) {
       uniqueSkills.set(canonicalKey, displayName);
     }
@@ -94,7 +98,6 @@ const normalizeSkillNames = (skills = []) => {
   return Array.from(uniqueSkills.values());
 };
 
-// Calculate missing skills using canonical comparison keys.
 const calculateMissingSkills = (
   currentSkills,
   requiredSkills
@@ -119,7 +122,7 @@ const extractTextFromCV = async (
 ) => {
   const extension = path.extname(fileName).toLowerCase();
 
-  // Extract text from PDF.
+  // PDF extraction.
   if (
     fileType === "application/pdf" ||
     extension === ".pdf"
@@ -157,7 +160,7 @@ const extractTextFromCV = async (
     }
   }
 
-  // Extract text from DOCX.
+  // DOCX extraction.
   if (
     fileType ===
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
@@ -175,12 +178,15 @@ const extractTextFromCV = async (
     fileType === "application/msword" ||
     extension === ".doc"
   ) {
-    throw new Error(
+    const error = new Error(
       "DOC files are accepted for upload, but text extraction is not supported yet."
     );
+
+    error.statusCode = 415;
+    throw error;
   }
 
-  // Extract plain text.
+  // Plain text extraction.
   if (
     fileType === "text/plain" ||
     extension === ".txt"
@@ -188,14 +194,16 @@ const extractTextFromCV = async (
     return fileBuffer.toString("utf-8");
   }
 
-  throw new Error("Unsupported CV file type.");
+  const error = new Error("Unsupported CV file type.");
+  error.statusCode = 415;
+  throw error;
 };
 
 // =====================================================
 // 3. CV SANITIZATION AND DATABASE OPERATIONS
 // =====================================================
 
-const sanitizeCVText = (extractedText) => {
+const sanitizeCVText = async (extractedText) => {
   return sanitizePII(extractedText);
 };
 
@@ -208,7 +216,7 @@ const saveExtractedText = async ({
   extractedText,
   sanitizedText,
 }) => {
-  const analysis = await CVAnalysis.create({
+  return CVAnalysis.create({
     cvId,
     targetJobTitle,
     industryFocus,
@@ -217,26 +225,20 @@ const saveExtractedText = async ({
     extractedText,
     sanitizedText,
   });
-
-  return analysis;
 };
 
 const getCVAnalysis = async (cvId) => {
-  const analysis = await CVAnalysis.findOne({
+  return CVAnalysis.findOne({
     where: { cvId },
     order: [["createdAt", "DESC"]],
   });
-
-  return analysis;
 };
 
 const getCVAnalysisHistory = async (cvId) => {
-  const analyses = await CVAnalysis.findAll({
+  return CVAnalysis.findAll({
     where: { cvId },
     order: [["createdAt", "DESC"]],
   });
-
-  return analyses;
 };
 
 const saveAIAnalysisResult = async (
@@ -257,49 +259,29 @@ const saveAIAnalysisResult = async (
 };
 
 // =====================================================
-// 4. PROCESS CV ANALYSIS
+// 4. RETRIEVE AND EXTRACT CV
 // =====================================================
 
-const processCVAnalysis = async ({
-  cv,
-  targetJobTitle,
-  industryFocus,
-  careerStage,
-  primaryGoal,
-}) => {
-  // Currently, only Gap Analysis is supported.
-  if (primaryGoal !== "Gap Analysis") {
-    const error = new Error(
-      "AI analysis is currently available for Gap Analysis only."
-    );
-
-    error.statusCode = 501;
-    throw error;
-  }
-
-  // Step 1: Retrieve the uploaded CV from R2.
+const extractAndSanitizeCV = async (cv) => {
   console.log("[CV ANALYSIS] Starting R2 retrieval");
 
   const cvObject = await getCVFromR2(cv.filePath);
 
-  if (!cvObject) {
-    const error = new Error("CV file not found in R2 storage.");
+  if (!cvObject || !cvObject.Body) {
+    const error = new Error(
+      "CV file content could not be retrieved from R2 storage."
+    );
+
     error.statusCode = 404;
     throw error;
   }
 
   console.log("[CV ANALYSIS] R2 retrieval completed");
 
-  // Step 2: Convert the R2 object into a Buffer.
-  if (!cvObject.Body) {
-    throw new Error("CV file content is missing from R2 storage.");
-  }
-
   const fileBuffer = Buffer.from(
     await cvObject.Body.transformToByteArray()
   );
 
-  // Step 3: Extract text from the CV.
   console.log("[CV ANALYSIS] Starting CV text extraction");
 
   const extractedText = await extractTextFromCV(
@@ -312,6 +294,7 @@ const processCVAnalysis = async ({
     const error = new Error(
       "No readable text was found in the CV."
     );
+
     error.statusCode = 400;
     throw error;
   }
@@ -320,12 +303,284 @@ const processCVAnalysis = async ({
     textLength: extractedText.length,
   });
 
-  // Step 4: Remove personally identifiable information.
   const sanitizedText = await sanitizeCVText(extractedText);
 
   console.log("[CV ANALYSIS] PII sanitization completed");
 
-  // Step 5: Save the initial CV analysis record.
+  return {
+    extractedText,
+    sanitizedText,
+  };
+};
+
+// =====================================================
+// 5. GAP ANALYSIS
+// =====================================================
+
+const processGapAnalysis = async ({
+  cv,
+  analysis,
+  sanitizedText,
+  targetJobTitle,
+  industryFocus,
+  careerStage,
+}) => {
+  let skillGap;
+
+  try {
+    // Create a pending SkillGap record.
+    console.log("[CV ANALYSIS] Creating SkillGap record");
+
+    skillGap = await createSkillGap(cv.userId, {
+      cvId: cv.id,
+      targetJobTitle,
+      currentSkills: [],
+      requiredSkills: [],
+    });
+
+    console.log("[CV ANALYSIS] SkillGap created");
+
+    // Send sanitized CV content to Gemini.
+    console.log("[CV ANALYSIS] Starting Gemini gap analysis");
+
+    const aiResponse = await analyzeCVWithAI({
+      cvId: cv.id,
+      sanitizedText,
+      targetJobTitle,
+      industryFocus,
+      careerStage,
+    });
+
+    const result = aiResponse?.analysis ?? aiResponse;
+
+    if (!result) {
+      throw new Error(
+        "The AI service returned no gap analysis result."
+      );
+    }
+
+    // Normalize identified and required skills.
+    const currentSkills = normalizeSkillNames(
+      result.identified_skills
+    );
+
+    const requiredSkills = normalizeSkillNames(
+      result.required_skills
+    );
+
+    // Calculate missing skills on the backend.
+    const missingSkills = calculateMissingSkills(
+      currentSkills,
+      requiredSkills
+    );
+
+    const normalizedAnalysisResult = {
+      ...result,
+      identified_skills: currentSkills,
+      required_skills: requiredSkills,
+      skill_gaps: missingSkills,
+    };
+
+    console.log("[CV ANALYSIS] Skill comparison completed", {
+      currentSkills: currentSkills.length,
+      requiredSkills: requiredSkills.length,
+      missingSkills: missingSkills.length,
+    });
+
+    // Save the AI analysis.
+    const savedAnalysis = await saveAIAnalysisResult(
+      analysis.id,
+      normalizedAnalysisResult
+    );
+
+    if (!savedAnalysis) {
+      throw new Error(
+        "Could not save the CV analysis result."
+      );
+    }
+
+    // Complete the SkillGap record.
+    const completedSkillGap = await completeSkillGapAnalysis(
+      skillGap.id,
+      cv.userId,
+      {
+        currentSkills,
+        requiredSkills,
+        missingSkills,
+        analysisResult: normalizedAnalysisResult,
+      }
+    );
+
+    if (!completedSkillGap) {
+      throw new Error(
+        "Could not complete the SkillGap analysis."
+      );
+    }
+
+    console.log("[CV ANALYSIS] Gap analysis completed");
+
+    return {
+      analysis: savedAnalysis,
+      skillGap: completedSkillGap,
+      roadmap: null,
+      sanitizedText,
+    };
+  } catch (error) {
+    console.error("[CV ANALYSIS] Gap analysis failed:", {
+      message: error.message,
+      status: error.statusCode || error.status,
+    });
+
+    if (skillGap) {
+      try {
+        await failSkillGapAnalysis(skillGap.id, cv.userId);
+      } catch (statusError) {
+        console.error(
+          "[CV ANALYSIS] Could not mark SkillGap as failed:",
+          statusError.message
+        );
+      }
+    }
+
+    throw error;
+  }
+};
+
+// =====================================================
+// 6. CV REVIEW
+// =====================================================
+
+const processCVReview = async ({
+  cv,
+  analysis,
+  sanitizedText,
+  targetJobTitle,
+  industryFocus,
+  careerStage,
+}) => {
+  console.log("[CV ANALYSIS] Starting CV review");
+
+  const aiResponse = await reviewCVWithAI({
+    cvId: cv.id,
+    sanitizedText,
+    targetJobTitle,
+    industryFocus,
+    careerStage,
+  });
+
+  const result = aiResponse?.analysis ?? aiResponse;
+
+  if (!result) {
+    throw new Error(
+      "The AI service returned no CV review result."
+    );
+  }
+
+  const savedAnalysis = await saveAIAnalysisResult(
+    analysis.id,
+    result
+  );
+
+  if (!savedAnalysis) {
+    throw new Error(
+      "Could not save the CV review result."
+    );
+  }
+
+  console.log("[CV ANALYSIS] CV review completed");
+
+  return {
+    analysis: savedAnalysis,
+    skillGap: null,
+    roadmap: null,
+    sanitizedText,
+  };
+};
+
+// =====================================================
+// 7. ROADMAP GENERATION
+// =====================================================
+
+const processRoadmapGeneration = async ({
+  cv,
+  analysis,
+  sanitizedText,
+  targetJobTitle,
+  industryFocus,
+  careerStage,
+}) => {
+  // A roadmap requires a completed SkillGap first.
+  // Generate the gap analysis before creating the roadmap.
+  const gapResult = await processGapAnalysis({
+    cv,
+    analysis,
+    sanitizedText,
+    targetJobTitle,
+    industryFocus,
+    careerStage,
+  });
+
+  if (!gapResult.skillGap) {
+    throw new Error(
+      "A completed skill-gap analysis is required before generating a roadmap."
+    );
+  }
+
+  console.log("[CV ANALYSIS] Generating personalized roadmap");
+
+  // Use the existing roadmap service.
+  const roadmap = await generateRoadmap(
+    cv.userId,
+    gapResult.skillGap.id
+  );
+
+  if (!roadmap) {
+    throw new Error(
+      "The roadmap could not be generated."
+    );
+  }
+
+  console.log("[CV ANALYSIS] Roadmap generated successfully");
+
+  return {
+    ...gapResult,
+    roadmap,
+  };
+};
+
+// =====================================================
+// 8. PROCESS CV ANALYSIS
+// =====================================================
+
+const processCVAnalysis = async ({
+  cv,
+  targetJobTitle,
+  industryFocus,
+  careerStage,
+  primaryGoal,
+}) => {
+  const supportedGoals = [
+    "CV Review",
+    "Gap Analysis",
+    "Roadmap",
+  ];
+
+  if (!supportedGoals.includes(primaryGoal)) {
+    const error = new Error(
+      "Invalid analysis goal. Choose CV Review, Gap Analysis or Roadmap."
+    );
+
+    error.statusCode = 400;
+    throw error;
+  }
+
+  // Retrieve, extract and sanitize the uploaded CV.
+  const {
+    extractedText,
+    sanitizedText,
+  } = await extractAndSanitizeCV(cv);
+
+  // Save the initial analysis record.
   console.log("[CV ANALYSIS] Saving initial analysis");
 
   const analysis = await saveExtractedText({
@@ -340,142 +595,45 @@ const processCVAnalysis = async ({
 
   console.log("[CV ANALYSIS] Initial analysis saved");
 
-  // Step 6: Create a pending SkillGap record.
-  console.log("[CV ANALYSIS] Creating SkillGap record");
+  // Execute the selected survey goal.
+  switch (primaryGoal) {
+    case "CV Review":
+      return processCVReview({
+        cv,
+        analysis,
+        sanitizedText,
+        targetJobTitle,
+        industryFocus,
+        careerStage,
+      });
 
-  const skillGap = await createSkillGap(cv.userId, {
-    cvId: cv.id,
-    targetJobTitle,
-    currentSkills: [],
-    requiredSkills: [],
-  });
+    case "Gap Analysis":
+      return processGapAnalysis({
+        cv,
+        analysis,
+        sanitizedText,
+        targetJobTitle,
+        industryFocus,
+        careerStage,
+      });
 
-  console.log("[CV ANALYSIS] SkillGap created");
+    case "Roadmap":
+      return processRoadmapGeneration({
+        cv,
+        analysis,
+        sanitizedText,
+        targetJobTitle,
+        industryFocus,
+        careerStage,
+      });
 
-  try {
-    // Step 7: Send sanitized CV text to Gemini.
-    console.log("[CV ANALYSIS] Starting Gemini request");
-
-    const aiResponse = await analyzeCVWithAI({
-      cvId: cv.id,
-      sanitizedText,
-      targetJobTitle,
-      industryFocus,
-      careerStage,
-    });
-
-    console.log("[CV ANALYSIS] Gemini request completed");
-
-    const result = aiResponse.analysis;
-
-    if (!result) {
-      throw new Error(
-        "The AI service returned no analysis result."
-      );
-    }
-
-    // Step 8: Normalize current and required skills.
-    console.log("[CV ANALYSIS] Normalizing skills");
-
-    const currentSkills = normalizeSkillNames(
-      result.identified_skills
-    );
-
-    const requiredSkills = normalizeSkillNames(
-      result.required_skills
-    );
-
-    // Step 9: Calculate missing skills on the backend.
-    // The AI-generated skill_gaps array is not trusted as
-    // the final source of truth.
-    const missingSkills = calculateMissingSkills(
-      currentSkills,
-      requiredSkills
-    );
-
-    // Update the analysis result so the CVAnalysis record
-    // and SkillGap record contain the same normalized data.
-    const normalizedAnalysisResult = {
-      ...result,
-      identified_skills: currentSkills,
-      required_skills: requiredSkills,
-      skill_gaps: missingSkills,
-    };
-
-    console.log("[CV ANALYSIS] Skill comparison completed", {
-      currentSkills: currentSkills.length,
-      requiredSkills: requiredSkills.length,
-      missingSkills: missingSkills.length,
-    });
-
-    // Step 10: Save the normalized AI analysis result.
-    console.log("[CV ANALYSIS] Saving AI analysis result");
-
-    const savedAnalysis = await saveAIAnalysisResult(
-      analysis.id,
-      normalizedAnalysisResult
-    );
-
-    if (!savedAnalysis) {
-      throw new Error(
-        "Could not save the CV analysis result."
-      );
-    }
-
-    console.log("[CV ANALYSIS] AI analysis result saved");
-
-    // Step 11: Complete the SkillGap record.
-    // The SkillGap service also verifies the missing skills.
-    console.log("[CV ANALYSIS] Completing SkillGap analysis");
-
-    const completedSkillGap = await completeSkillGapAnalysis(
-      skillGap.id,
-      cv.userId,
-      {
-        currentSkills,
-        requiredSkills,
-        missingSkills,
-        analysisResult: normalizedAnalysisResult,
-      }
-    );
-
-    if (!completedSkillGap) {
-      throw new Error(
-        "Could not save the SkillGap analysis result."
-      );
-    }
-
-    console.log("[CV ANALYSIS] SkillGap analysis completed");
-
-    return {
-      analysis: savedAnalysis,
-      skillGap: completedSkillGap,
-      sanitizedText,
-    };
-  } catch (error) {
-    console.error("[CV ANALYSIS] Processing failed:", {
-      message: error.message,
-      status: error.statusCode || error.status,
-    });
-
-    // Mark the SkillGap record as failed if processing fails.
-    try {
-      await failSkillGapAnalysis(skillGap.id, cv.userId);
-
-      console.log("[CV ANALYSIS] SkillGap marked as failed");
-    } catch (statusError) {
-      console.error(
-        "[CV ANALYSIS] Could not update SkillGap failure status:",
-        statusError.message
-      );
-    }
-
-    throw error;
+    default:
+      throw new Error("Unsupported CV analysis goal.");
   }
 };
 
 // =====================================================
-// 5. EXPORT FUNCTIONS
+// 9. EXPORT FUNCTIONS
 // =====================================================
 
 export {

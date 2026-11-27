@@ -7,7 +7,7 @@
  * /api/v1/roadmaps/generate:
  *   post:
  *     summary: Generate a career roadmap
- *     description: Generate a roadmap for the authenticated user using a skill-gap analysis. Generation is currently unavailable until an AI provider is selected.
+ *     description: Generate a personalized 90-day career roadmap for the authenticated user using a completed skill-gap analysis.
  *     tags:
  *       - Career Roadmap
  *     security:
@@ -19,12 +19,16 @@
  *           schema:
  *             $ref: '#/components/schemas/GenerateRoadmapRequest'
  *     responses:
- *       503:
- *         description: Roadmap generation is unavailable until an AI provider is selected
- *       401:
- *         description: Authentication required
- *       404:
- *         description: Skill-gap analysis not found
+            201:
+              description: Roadmap generated successfully
+            401:
+              description: Authentication required
+            404:
+              description: Skill-gap analysis not found
+            422:
+              description: Skill-gap analysis is incomplete or invalid
+            502:
+              description: AI returned an invalid or incomplete roadmap
  *
  * /api/v1/roadmaps:
  *   get:
@@ -230,10 +234,12 @@
  *         description: Roadmap or task not found
  */
 
+
 import { Router } from "express";
 import * as controller from "../controllers/roadmap.controller.js";
 import { protect } from "../middleware/auth.middleware.js";
 import { validate } from "../middleware/validation.middleware.js";
+
 import {
   createRoadmapTaskRules,
   generateRoadmapRules,
@@ -245,35 +251,69 @@ import {
 
 const router = Router();
 
+// All roadmap routes require authentication.
 router.use(protect);
 
-router.post("/generate", generateRoadmapRules, validate, controller.generateRoadmap);
-router.get("/", controller.listRoadmaps);
-router.get("/:id", roadmapIdRules, validate, controller.getRoadmap);
+// Generate a roadmap.
+router.post(
+  "/generate",
+  generateRoadmapRules,
+  validate,
+  controller.generateRoadmap
+);
+
+// Retrieve all authenticated user's roadmaps.
+router.get(
+  "/",
+  controller.listRoadmaps
+);
+
+// Retrieve one roadmap.
+router.get(
+  "/:id",
+  roadmapIdRules,
+  validate,
+  controller.getRoadmap
+);
+
+// Update a roadmap.
 router.patch(
   "/:id",
   updateRoadmapRules,
   validate,
-  controller.updateRoadmap,
+  controller.updateRoadmap
 );
-router.delete("/:id", roadmapIdRules, validate, controller.deleteRoadmap);
+
+// Delete a roadmap.
+router.delete(
+  "/:id",
+  roadmapIdRules,
+  validate,
+  controller.deleteRoadmap
+);
+
+// Create a task.
 router.post(
   "/:id/tasks",
   createRoadmapTaskRules,
   validate,
-  controller.createRoadmapTask,
+  controller.createRoadmapTask
 );
+
+// Update a task.
 router.patch(
   "/:id/tasks/:taskId",
   updateRoadmapTaskRules,
   validate,
-  controller.updateRoadmapTask,
+  controller.updateRoadmapTask
 );
+
+// Delete a task.
 router.delete(
   "/:id/tasks/:taskId",
   roadmapTaskIdRules,
   validate,
-  controller.deleteRoadmapTask,
+  controller.deleteRoadmapTask
 );
 
 export default router;

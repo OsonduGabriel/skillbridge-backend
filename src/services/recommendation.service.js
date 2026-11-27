@@ -1,9 +1,40 @@
 
+import { Op } from "sequelize";
+
 import Recommendation from "../models/recommendation.model.js";
 import Skill from "../models/skill.model.js";
-import UserSkill from "../models/UserSkill.model.js";
-import Profile from "../models/profile.model.js";
+import SkillGap from "../models/skillgap.model.js";
 
+// Normalize skill names to handle common variations.
+const normalizeSkill = (skill) => {
+  if (typeof skill !== "string") return "";
+
+  const normalized = skill
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9+#]/g, "");
+
+  const aliases = {
+    express: "expressjs",
+    expressjs: "expressjs",
+    react: "reactjs",
+    reactjs: "reactjs",
+    node: "nodejs",
+    nodejs: "nodejs",
+    postgres: "postgresql",
+    postgresql: "postgresql",
+    js: "javascript",
+    javascript: "javascript",
+    html5: "html",
+    html: "html",
+    css3: "css",
+    css: "css",
+  };
+
+  return aliases[normalized] || normalized;
+};
+
+// Retrieve active recommendations.
 export const getRecommendations = async (filters = {}) => {
   const where = {
     isActive: true,
@@ -35,6 +66,7 @@ export const getRecommendations = async (filters = {}) => {
   });
 };
 
+// Retrieve one active recommendation.
 export const getRecommendationById = async (id) => {
   return Recommendation.findOne({
     where: {
@@ -52,58 +84,92 @@ export const getRecommendationById = async (id) => {
   });
 };
 
+// Retrieve recommendations that address the user's missing skills.
 export const getPersonalizedRecommendations = async (userId) => {
-  const [userSkills, profile] = await Promise.all([
-    UserSkill.findAll({
-      where: { userId },
-      attributes: ["skillId", "proficiencyLevel"],
-    }),
-    Profile.findOne({
-      where: { userId },
-      attributes: ["careerGoal"],
-    }),
-  ]);
+  // Get the user's latest completed skill-gap analysis.
+  const skillGap = await SkillGap.findOne({
+    where: {
+      userId,
+      status: "completed",
+    },
+    order: [["createdAt", "DESC"]],
+  });
 
-  const skillIds = userSkills.map((item) => item.skillId);
+  if (!skillGap) {
+    return [];
+  }
 
-  const recommendations = await getRecommendations();
+  // Normalize the missing skills from the analysis.
+  const missingSkills = [
+    ...new Set(
+      (skillGap.missingSkills || [])
+        .map(normalizeSkill)
+        .filter(Boolean)
+    ),
+  ];
 
-  const skillLevels = new Map(
-    userSkills.map((item) => [item.skillId, item.proficiencyLevel])
+  if (missingSkills.length === 0) {
+    return [];
+  }
+
+  // Retrieve active skills from the catalogue.
+  const skills = await Skill.findAll({
+    where: {
+      isActive: true,
+    },
+    attributes: ["id", "name", "category"],
+  });
+
+  // Match missing skills against the skills catalogue.
+  const matchingSkills = skills.filter((skill) =>
+    missingSkills.includes(normalizeSkill(skill.name))
   );
 
+  const skillIds = matchingSkills.map((skill) => skill.id);
+
+  if (skillIds.length === 0) {
+    return [];
+  }
+
+  // Retrieve active resources linked to missing skills.
+  const recommendations = await Recommendation.findAll({
+    where: {
+      isActive: true,
+      skillId: {
+        [Op.in]: skillIds,
+      },
+    },
+    include: [
+      {
+        model: Skill,
+        as: "skill",
+        attributes: ["id", "name", "category"],
+        required: true,
+      },
+    ],
+    order: [["createdAt", "DESC"]],
+  });
+
+  // Attach relevance information to each recommendation.
   return recommendations
     .map((item) => {
       const recommendation = item.toJSON();
-      const proficiency = skillLevels.get(recommendation.skillId);
 
-      let score = 0;
+      const normalizedSkill = normalizeSkill(
+        recommendation.skill.name
+      );
 
-      if (skillIds.includes(recommendation.skillId)) {
-        score += 10;
+      const addressesSkillGap = missingSkills.includes(
+        normalizedSkill
+      );
 
-        if (
-          proficiency === "beginner" &&
-          recommendation.difficulty === "beginner"
-        ) {
-          score += 3;
-        } else if (
-          proficiency === "intermediate" &&
-          recommendation.difficulty === "intermediate"
-        ) {
-          score += 3;
-        } else if (
-          proficiency === "advanced" &&
-          recommendation.difficulty === "advanced"
-        ) {
-          score += 3;
-        }
-      }
-
-      recommendation.relevanceScore = score;
-      recommendation.careerGoal = profile?.careerGoal ?? null;
-
-      return recommendation;
+      return {
+        ...recommendation,
+        relevanceScore: addressesSkillGap ? 100 : 0,
+        addressesSkillGap,
+        targetRole: skillGap.targetJobTitle,
+      };
     })
+    .filter((item) => item.addressesSkillGap)
     .sort((a, b) => b.relevanceScore - a.relevanceScore);
 };

@@ -1,3 +1,4 @@
+
 import User from "./user.model.js";
 import Roadmap from "./roadmap.model.js";
 import RoadmapTask from "./roadmap-task.model.js";
@@ -6,6 +7,7 @@ import CV from "./cv.model.js";
 import CVAnalysis from "./cv.analysis.model.js";
 import Matching from "./matching.model.js";
 import Opportunity from "./opportunity.model.js";
+import Recommendation from "./recommendation.model.js";
 import Course from "./course.model.js";
 import CourseModule from "./course-module.model.js";
 import Lesson from "./lesson.model.js";
@@ -14,21 +16,68 @@ import LessonProgress from "./lesson-progress.model.js";
 import Certification from "./certification.model.js";
 import UserCertification from "./user-certification.model.js";
 
-User.hasMany(Roadmap, { as: "roadmaps", foreignKey: "userId" });
-Roadmap.belongsTo(User, { as: "owner", foreignKey: "userId" });
+// ==========================================
+// USER AND ROADMAP RELATIONSHIPS
+// ==========================================
+
+User.hasMany(Roadmap, {
+  as: "roadmaps",
+  foreignKey: "userId",
+});
+
+Roadmap.belongsTo(User, {
+  as: "owner",
+  foreignKey: "userId",
+});
+
+// ==========================================
+// ROADMAP AND ROADMAP TASK RELATIONSHIPS
+// ==========================================
+
 Roadmap.hasMany(RoadmapTask, {
   as: "tasks",
   foreignKey: "roadmapId",
   onDelete: "CASCADE",
   hooks: true,
 });
-RoadmapTask.belongsTo(Roadmap, { as: "roadmap", foreignKey: "roadmapId" });
-SkillGap.hasMany(Roadmap, { as: "roadmaps", foreignKey: "skillGapId" });
-Roadmap.belongsTo(SkillGap, { as: "skillGap", foreignKey: "skillGapId" });
 
+RoadmapTask.belongsTo(Roadmap, {
+  as: "roadmap",
+  foreignKey: "roadmapId",
+});
 
+// ==========================================
+// SKILL GAP AND ROADMAP RELATIONSHIPS
+// ==========================================
 
-// User and CV
+SkillGap.hasMany(Roadmap, {
+  as: "roadmaps",
+  foreignKey: "skillGapId",
+});
+
+Roadmap.belongsTo(SkillGap, {
+  as: "skillGap",
+  foreignKey: "skillGapId",
+});
+
+// ==========================================
+// ROADMAP TASK AND RECOMMENDATION
+// ==========================================
+
+RoadmapTask.belongsTo(Recommendation, {
+  foreignKey: "recommendationId",
+  as: "recommendation",
+});
+
+Recommendation.hasMany(RoadmapTask, {
+  foreignKey: "recommendationId",
+  as: "roadmapTasks",
+});
+
+// ==========================================
+// USER AND CV RELATIONSHIPS
+// ==========================================
+
 User.hasMany(CV, {
   foreignKey: "userId",
   as: "cvs",
@@ -39,7 +88,10 @@ CV.belongsTo(User, {
   as: "user",
 });
 
-// CV and CV Analysis
+// ==========================================
+// CV AND CV ANALYSIS RELATIONSHIPS
+// ==========================================
+
 CV.hasMany(CVAnalysis, {
   foreignKey: "cvId",
   as: "analyses",
@@ -50,7 +102,10 @@ CVAnalysis.belongsTo(CV, {
   as: "cv",
 });
 
-// User and Skill Gap Analysis
+// ==========================================
+// USER AND SKILL GAP RELATIONSHIPS
+// ==========================================
+
 User.hasMany(SkillGap, {
   foreignKey: "userId",
   as: "skillGaps",
@@ -61,7 +116,10 @@ SkillGap.belongsTo(User, {
   as: "user",
 });
 
-// CV and Skill Gap Analysis
+// ==========================================
+// CV AND SKILL GAP RELATIONSHIPS
+// ==========================================
+
 CV.hasMany(SkillGap, {
   foreignKey: "cvId",
   as: "skillGaps",
@@ -72,7 +130,10 @@ SkillGap.belongsTo(CV, {
   as: "cv",
 });
 
-//Matching and opportunity
+// ==========================================
+// MATCHING AND OPPORTUNITY RELATIONSHIPS
+// ==========================================
+
 Matching.belongsTo(Opportunity, {
   foreignKey: "opportunityId",
   as: "opportunity",
@@ -83,7 +144,10 @@ Opportunity.hasMany(Matching, {
   as: "matches",
 });
 
-// User and Career Matching
+// ==========================================
+// USER AND CAREER MATCHING RELATIONSHIPS
+// ==========================================
+
 User.hasMany(Matching, {
   foreignKey: "userId",
   as: "careerMatches",
@@ -93,13 +157,21 @@ Matching.belongsTo(User, {
   foreignKey: "userId",
   as: "user",
 });
+
+// ==========================================
+// MODEL EXPORTS
+// ==========================================
+
 export {
   User,
+  Roadmap,
+  RoadmapTask,
+  SkillGap,
   CV,
   CVAnalysis,
-  SkillGap,
   Matching,
   Opportunity,
+  Recommendation,
   Course,
   CourseModule,
   Lesson,
