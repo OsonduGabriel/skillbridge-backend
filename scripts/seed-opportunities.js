@@ -74,8 +74,17 @@ const normalizeType = (value) => {
 };
 
 // Extract a definite work arrangement where possible.
+
 const normalizeWorkMode = (value) => {
   const mode = String(value || "").trim().toLowerCase();
+
+  if (mode.startsWith("field / remote")) {
+    return "remote";
+  }
+
+  if (mode.startsWith("field / hybrid")) {
+    return "hybrid";
+  }
 
   if (mode.startsWith("remote")) {
     return "remote";
@@ -92,11 +101,7 @@ const normalizeWorkMode = (value) => {
     return "onsite";
   }
 
-  if (mode.startsWith("field / hybrid")) {
-    return "hybrid";
-  }
-
-  // These values do not establish one definite work arrangement.
+  // These values do not establish one definite arrangement.
   if (
     mode === "remote / hybrid" ||
     mode === "on-site / hybrid"
@@ -108,6 +113,7 @@ const normalizeWorkMode = (value) => {
     `Unsupported opportunity work mode: "${value}"`,
   );
 };
+
 
 // Extract the geographical location from location_type.
 const normalizeLocation = (value) => {
