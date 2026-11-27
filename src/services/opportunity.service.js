@@ -23,16 +23,22 @@ const normalizeSkill = (skill) => {
   const aliases = {
     express: "expressjs",
     expressjs: "expressjs",
+
     react: "reactjs",
     reactjs: "reactjs",
+
     node: "nodejs",
     nodejs: "nodejs",
+
     postgres: "postgresql",
     postgresql: "postgresql",
+
     js: "javascript",
     javascript: "javascript",
+
     html5: "html",
     html: "html",
+
     css3: "css",
     css: "css",
   };
@@ -42,8 +48,12 @@ const normalizeSkill = (skill) => {
 
 // Validate and normalize a list of skills.
 const normalizeSkills = (list = []) => {
-  if (!Array.isArray(list)) {
+  if (list === null || list === undefined) {
     return [];
+  }
+
+  if (!Array.isArray(list)) {
+    throw httpError(400, "Skills must be provided as an array.");
   }
 
   return [
@@ -97,8 +107,14 @@ export const createOpportunity = async (payload) => {
     workMode,
     applicationUrl,
     deadline,
-    requiredSkills: normalizeSkills(payload.requiredSkills),
-    preferredSkills: normalizeSkills(payload.preferredSkills),
+
+    requiredSkills: normalizeSkills(
+      payload.requiredSkills
+    ),
+
+    preferredSkills: normalizeSkills(
+      payload.preferredSkills
+    ),
   });
 };
 
@@ -142,10 +158,14 @@ export const deleteOpportunity = async (id) => {
   await opportunity.destroy();
 };
 
-// Expire opportunities whose deadlines have passed or
-// aggregated opportunities that have not been updated recently.
+// Expire opportunities whose application deadlines have passed.
+//
+// Stale aggregated opportunities are handled separately.
+// They are only checked for sources that successfully returned
+// a complete snapshot during the latest aggregation run.
 export const expireStaleOpportunities = async ({
   now = new Date(),
+  sourceNames = [],
 } = {}) => {
   const configuredDays = Number.parseInt(
     process.env.OPPORTUNITY_STALE_AFTER_DAYS ?? "14",
@@ -153,43 +173,86 @@ export const expireStaleOpportunities = async ({
   );
 
   const staleAfterDays =
-    Number.isInteger(configuredDays) && configuredDays >= 0
+    Number.isInteger(configuredDays) && configuredDays >= 1
       ? configuredDays
       : 14;
 
   const staleBefore = new Date(
-    now.getTime() - staleAfterDays * 24 * 60 * 60 * 1000
+    now.getTime() -
+    staleAfterDays * 24 * 60 * 60 * 1000
   );
 
-  const [expired] = await Opportunity.update(
+  // First, expire opportunities whose application deadlines
+  // have passed. This applies to seed, manual and aggregated records.
+  const [expiredByDeadline] = await Opportunity.update(
     {
       status: "expired",
     },
     {
       where: {
         status: "active",
-        [Op.or]: [
-          {
-            deadline: {
-              [Op.lt]: now,
-            },
-          },
-          {
-            source: "aggregated",
-            lastSeenAt: {
-              [Op.lt]: staleBefore,
-            },
-          },
-        ],
+        deadline: {
+          [Op.lt]: now,
+        },
       },
     }
   );
 
-  return { expired };
+  let expiredAsStale = 0;
+
+  // Only check stale records for providers that successfully
+  // returned a complete snapshot.
+  //
+  // A failed provider request must never cause its records
+  // to be expired.
+  const validSourceNames = [
+    ...new Set(
+      sourceNames.filter(
+        (name) =>
+          typeof name === "string" &&
+          name.trim()
+      ).map((name) => name.trim())
+    ),
+  ];
+
+  if (validSourceNames.length > 0) {
+    const [staleCount] = await Opportunity.update(
+      {
+        status: "expired",
+      },
+      {
+        where: {
+          status: "active",
+          source: "aggregated",
+          sourceName: {
+            [Op.in]: validSourceNames,
+          },
+          lastSeenAt: {
+            [Op.lt]: staleBefore,
+          },
+          [Op.or]: [
+            { deadline: null },
+            { deadline: { [Op.gte]: now } },
+          ],
+        },
+      }
+    );
+
+    expiredAsStale = staleCount;
+  }
+
+  return {
+    expired: expiredByDeadline + expiredAsStale,
+    expiredByDeadline,
+    expiredAsStale,
+  };
 };
 
 // Check whether an opportunity contains the requested skill.
-const opportunityHasSkill = (opportunity, requestedSkill) => {
+const opportunityHasSkill = (
+  opportunity,
+  requestedSkill
+) => {
   const requiredSkills = normalizeSkills(
     opportunity.requiredSkills
   );
@@ -227,7 +290,9 @@ export const listOpportunities = async ({
     Math.max(1, Number.parseInt(limit, 10) || 10)
   );
 
-  const conditions = [{ status }];
+  const conditions = [
+    { status },
+  ];
 
   // Exclude opportunities whose application deadlines have passed.
   if (status === "active") {
@@ -240,7 +305,7 @@ export const listOpportunities = async ({
   }
 
   // Search opportunity title and company.
-  if (q && q.trim()) {
+  if (typeof q === "string" && q.trim()) {
     const searchTerm = q.trim();
 
     conditions.push({
@@ -267,7 +332,7 @@ export const listOpportunities = async ({
     conditions.push({ workMode });
   }
 
-  if (category) {
+  if (typeof category === "string" && category.trim()) {
     conditions.push({
       category: {
         [Op.iLike]: category.trim(),
@@ -275,7 +340,7 @@ export const listOpportunities = async ({
     });
   }
 
-  if (location && location.trim()) {
+  if (typeof location === "string" && location.trim()) {
     conditions.push({
       location: {
         [Op.iLike]: `%${location.trim()}%`,
@@ -292,7 +357,7 @@ export const listOpportunities = async ({
   let rows;
   let count;
 
-  if (skill && skill.trim()) {
+  if (typeof skill === "string" && skill.trim()) {
     // Normalize the requested skill.
     const requestedSkill = normalizeSkill(skill);
 
@@ -310,7 +375,11 @@ export const listOpportunities = async ({
     // Filter opportunities using normalized skill names.
     const filteredOpportunities = opportunities.filter(
       (opportunity) =>
-        opportunityHasSkill(opportunity, requestedSkill)
+        requestedSkill &&
+        opportunityHasSkill(
+          opportunity,
+          requestedSkill
+        )
     );
 
     count = filteredOpportunities.length;
@@ -338,6 +407,7 @@ export const listOpportunities = async ({
 
   return {
     items: rows,
+
     pagination: {
       page: currentPage,
       limit: pageSize,

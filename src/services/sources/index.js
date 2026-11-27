@@ -1,16 +1,30 @@
 
 import sampleNigeriaSource from "./sampleNigeria.source.js";
 
-// Only enable sample opportunities for local development.
-// Never use demonstration records in production.
+// Return the opportunity source adapters enabled for this environment.
 export const getOpportunitySources = () => {
-  const isDevelopment = process.env.NODE_ENV !== "production";
+  const nodeEnvironment = process.env.NODE_ENV;
+
+  // Treat an unset NODE_ENV as local development.
+  const isDevelopment =
+    !nodeEnvironment ||
+    nodeEnvironment === "development";
+
   const sampleSourceEnabled =
     process.env.OPPORTUNITY_SAMPLE_SOURCE === "true";
 
-  if (!isDevelopment || !sampleSourceEnabled) {
-    return [];
+  const sources = [];
+
+  // Demonstration data must never be enabled in production.
+  if (isDevelopment && sampleSourceEnabled) {
+    sources.push(sampleNigeriaSource);
   }
 
-  return [sampleNigeriaSource];
+  // Register real external provider adapters here when implemented.
+  //
+  // Example:
+  // sources.push(adzunaSource);
+  // sources.push(remotiveSource);
+
+  return sources;
 };
