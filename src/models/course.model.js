@@ -26,6 +26,14 @@ const Course = sequelize.define(
             allowNull: false,
         },
 
+        field: {
+            type: DataTypes.STRING(100),
+            allowNull: false,
+            validate: {
+                notEmpty: true,
+            },
+        },
+
         difficulty: {
             type: DataTypes.STRING(20),
             allowNull: false,

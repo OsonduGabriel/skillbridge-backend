@@ -19,17 +19,16 @@
  *           schema:
  *             $ref: '#/components/schemas/GenerateRoadmapRequest'
  *     responses:
-            201:
-              description: Roadmap generated successfully
-            401:
-              description: Authentication required
-            404:
-              description: Skill-gap analysis not found
-            422:
-              description: Skill-gap analysis is incomplete or invalid
-            502:
-              description: AI returned an invalid or incomplete roadmap
- *
+ *       201:
+ *         description: Roadmap generated successfully
+ *       401:
+ *         description: Authentication required
+ *       404:
+ *         description: Skill-gap analysis not found
+ *       422:
+ *         description: Skill-gap analysis is incomplete or invalid
+ *       502:
+ *         description: AI returned an invalid or incomplete roadmap
  * /api/v1/roadmaps:
  *   get:
  *     summary: List my roadmaps

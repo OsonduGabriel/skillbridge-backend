@@ -84,18 +84,33 @@ export const getRecommendation = async (req, res, next) => {
   }
 };
 
+
+
 export const getPersonalized = async (req, res, next) => {
   try {
-    const recommendations = await getPersonalizedRecommendations(
-      req.user.id
-    );
+    const result = await getPersonalizedRecommendations(req.user.id);
+
+    const totalCount =
+      result.recommendations.length + result.courses.length;
 
     return res.status(200).json({
       success: true,
-      count: recommendations.length,
-      data: recommendations,
+      count: totalCount,
+
+      // Career information from the latest completed skill-gap analysis.
+      targetRole: result.targetRole,
+      targetField: result.targetField,
+      missingSkills: result.missingSkills,
+
+      // Existing learning resources and projects.
+      data: result.recommendations,
+
+      // Personalized internal and external courses.
+      courses: result.courses,
     });
   } catch (error) {
     next(error);
   }
 };
+
+

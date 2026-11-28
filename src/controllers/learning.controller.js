@@ -1,3 +1,4 @@
+import { Op } from "sequelize";
 import { Course, CourseModule, Lesson, Enrollment, LessonProgress, } from "../models/index.js";
 
 const isValidUUID = (id) => {
@@ -6,12 +7,87 @@ const isValidUUID = (id) => {
 // GET /api/v1/learning/courses
 export const getCourses = async (req, res) => {
     try {
+        const {
+            field,
+            category,
+            providerType,
+            difficulty,
+            search,
+        } = req.query;
+
+        const where = {
+            isPublished: true,
+        };
+
+        // Filter by career field
+        if (field) {
+            where.field = {
+                [Op.iLike]: field.trim(),
+            };
+        }
+
+        // Filter by course category
+        if (category) {
+            where.category = {
+                [Op.iLike]: category.trim(),
+            };
+        }
+
+        // Filter by provider type
+        if (providerType) {
+            const allowedProviders = ["internal", "external"];
+
+            if (!allowedProviders.includes(providerType.toLowerCase())) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Provider type must be internal or external.",
+                });
+            }
+
+            where.providerType = providerType.toLowerCase();
+        }
+
+        // Filter by difficulty
+        if (difficulty) {
+            const allowedDifficulties = [
+                "beginner",
+                "intermediate",
+                "advanced",
+            ];
+
+            if (!allowedDifficulties.includes(difficulty.toLowerCase())) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid difficulty level.",
+                });
+            }
+
+            where.difficulty = difficulty.toLowerCase();
+        }
+
+        // Search course title and description
+        if (search && search.trim()) {
+            where[Op.or] = [
+                {
+                    title: {
+                        [Op.iLike]: `%${search.trim()}%`,
+                    },
+                },
+                {
+                    description: {
+                        [Op.iLike]: `%${search.trim()}%`,
+                    },
+                },
+            ];
+        }
+
         const courses = await Course.findAll({
-            where: { isPublished: true },
+            where,
             attributes: [
                 "id",
                 "title",
                 "description",
+                "field",
                 "category",
                 "difficulty",
                 "providerType",
@@ -28,6 +104,7 @@ export const getCourses = async (req, res) => {
             count: courses.length,
             data: courses,
         });
+
     } catch (error) {
         console.error("Get courses error:", error);
 
@@ -178,6 +255,7 @@ export const getMyCourses = async (req, res) => {
                         "id",
                         "title",
                         "description",
+                        "field",
                         "category",
                         "difficulty",
                         "providerType",
@@ -342,6 +420,7 @@ export const getLearningProgress = async (req, res) => {
                     attributes: [
                         "id",
                         "title",
+                        "field",
                         "category",
                         "difficulty",
                         "estimatedHours",

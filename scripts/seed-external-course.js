@@ -22,6 +22,7 @@ async function seedExternalCourse() {
         const course = await Course.create({
             title: "Node.js Online Learning - Coursera",
             description: "Explore Node.js learning opportunities through Coursera.",
+            field: "Technology & Software Development",
             category: "Backend Development",
             difficulty: "beginner",
             providerType: "external",
