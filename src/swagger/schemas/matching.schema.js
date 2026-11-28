@@ -58,6 +58,12 @@ const matchingSchema = {
         example:
           "You match 3 of 4 required skills and 2 of 2 preferred skills. Skills to develop: docker.",
       },
+      isRelevant: {
+        type: "boolean",
+        description:
+          "True when the score is at least 40 and the job title relates to the latest analysis's target role. Calculated on each request, not stored.",
+        example: true,
+      },
       status: {
         type: "string",
         enum: ["pending", "completed", "failed"],

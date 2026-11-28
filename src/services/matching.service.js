@@ -4,6 +4,7 @@ import { Op } from "sequelize";
 import Matching from "../models/matching.model.js";
 import Opportunity from "../models/opportunity.model.js";
 import SkillGap from "../models/skillgap.model.js";
+import { isRelevantMatch } from "../utils/matchRelevance.js";
 
 // Create an error with an HTTP status code.
 const createError = (message, statusCode) => {
@@ -250,6 +251,11 @@ export const generateCareerMatches = async (userId) => {
 
     results.push({
       ...savedMatch.toJSON(),
+      isRelevant: isRelevantMatch({
+        matchPercentage: match.matchPercentage,
+        targetJobTitle: skillGap.targetJobTitle,
+        opportunityTitle: opportunity.title,
+      }),
       opportunity: opportunity.toJSON(),
     });
   }
@@ -286,7 +292,25 @@ export const getUserCareerMatches = async (userId) => {
     order: [["matchPercentage", "DESC"]],
   });
 
-  return matches;
+  // Relevance is worked out on each read, using the target role from the
+  // latest completed analysis. All matches are still returned.
+  const latestSkillGap = await SkillGap.findOne({
+    where: { userId, status: "completed" },
+    order: [["createdAt", "DESC"]],
+  });
+
+  return matches.map((savedMatch) => {
+    const match = savedMatch.toJSON();
+
+    return {
+      ...match,
+      isRelevant: isRelevantMatch({
+        matchPercentage: match.matchPercentage,
+        targetJobTitle: latestSkillGap?.targetJobTitle,
+        opportunityTitle: match.opportunity?.title,
+      }),
+    };
+  });
 };
 
 // Retain the existing function name for compatibility with
