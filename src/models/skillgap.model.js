@@ -2,6 +2,15 @@
 import { DataTypes } from "sequelize";
 import sequelize from "../config/database.js";
 
+// Career stages accepted by the analysis endpoint and stored on a skill gap.
+export const SKILL_GAP_CAREER_STAGES = [
+  "Student",
+  "Entry",
+  "Mid",
+  "Senior",
+  "Pivot",
+];
+
 // Validate that a value is an array containing non-empty strings.
 const isStringArray = (value) =>
   Array.isArray(value) &&
@@ -70,6 +79,24 @@ const SkillGap = sequelize.define(
     analysisResult: {
       type: DataTypes.JSONB,
       allowNull: true,
+    },
+
+    // The industry and career stage the analysis was run with, so the
+    // roadmap is built from the same context. Null for manual or older gaps.
+    industryFocus: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+    },
+
+    careerStage: {
+      type: DataTypes.STRING(20),
+      allowNull: true,
+      validate: {
+        isIn: {
+          args: [SKILL_GAP_CAREER_STAGES],
+          msg: "Career stage must be Student, Entry, Mid, Senior or Pivot.",
+        },
+      },
     },
 
     status: {

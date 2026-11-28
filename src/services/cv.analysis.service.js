@@ -334,6 +334,8 @@ const processGapAnalysis = async ({
     skillGap = await createSkillGap(cv.userId, {
       cvId: cv.id,
       targetJobTitle,
+      industryFocus,
+      careerStage,
       currentSkills: [],
       requiredSkills: [],
     });

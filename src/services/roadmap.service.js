@@ -253,7 +253,9 @@ export const generateRoadmap = async (userId, skillGapId) => {
     currentSkills,
     missingSkills,
     targetRole: skillGap.targetJobTitle.slice(0, 200),
-    primaryGoal: "Career development",
+    industryFocus: skillGap.industryFocus || undefined,
+    careerStage: skillGap.careerStage || undefined,
+    primaryGoal: "Build a 90-day learning roadmap",
   });
 
   const learningRoadmap = aiResult?.learning_roadmap;

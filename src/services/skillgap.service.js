@@ -1,5 +1,5 @@
 
-import SkillGap from "../models/skillgap.model.js";
+import SkillGap, { SKILL_GAP_CAREER_STAGES } from "../models/skillgap.model.js";
 import CV from "../models/cv.model.js";
 
 // =====================================================
@@ -79,6 +79,37 @@ const calculateMissingSkills = (
   );
 };
 
+// Validate and clean the optional industry and career stage.
+const normalizeAnalysisContext = ({ industryFocus, careerStage }) => {
+  let cleanIndustry = null;
+  let cleanStage = null;
+
+  if (industryFocus !== undefined && industryFocus !== null) {
+    if (typeof industryFocus !== "string") {
+      throw createError("industryFocus must be a string.", 400);
+    }
+
+    cleanIndustry = industryFocus.trim() || null;
+
+    if (cleanIndustry && cleanIndustry.length > 255) {
+      throw createError("industryFocus must be 255 characters or fewer.", 400);
+    }
+  }
+
+  if (careerStage !== undefined && careerStage !== null) {
+    if (!SKILL_GAP_CAREER_STAGES.includes(careerStage)) {
+      throw createError(
+        `careerStage must be one of: ${SKILL_GAP_CAREER_STAGES.join(", ")}.`,
+        400
+      );
+    }
+
+    cleanStage = careerStage;
+  }
+
+  return { industryFocus: cleanIndustry, careerStage: cleanStage };
+};
+
 // Check whether an optional CV exists and belongs to the user.
 const verifyCVOwnership = async (cvId, userId) => {
   if (!cvId) {
@@ -112,6 +143,8 @@ const createSkillGap = async (userId, skillGapData) => {
     requiredSkills = [],
   } = skillGapData;
 
+  const analysisContext = normalizeAnalysisContext(skillGapData);
+
   if (
     typeof targetJobTitle !== "string" ||
     !targetJobTitle.trim()
@@ -135,6 +168,8 @@ const createSkillGap = async (userId, skillGapData) => {
     requiredSkills,
     missingSkills: [],
     analysisResult: null,
+    industryFocus: analysisContext.industryFocus,
+    careerStage: analysisContext.careerStage,
     status: "pending",
   });
 
